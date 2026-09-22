@@ -1,16 +1,14 @@
 package com.haui.UrbanMart.controller;
 
-import com.haui.UrbanMart.dto.request.ResendOtpRequest;
-import com.haui.UrbanMart.dto.request.UserCreationRequest;
-import com.haui.UrbanMart.dto.request.VerifyOtpRequest;
+import com.haui.UrbanMart.dto.request.*;
 import com.haui.UrbanMart.dto.response.ApiResponse;
+import com.haui.UrbanMart.dto.response.LoginResponse;
 import com.haui.UrbanMart.dto.response.UserResponse;
+import com.haui.UrbanMart.security.CustomUserDetails;
 import com.haui.UrbanMart.service.AuthService;
 import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
 import lombok.RequiredArgsConstructor;
 
@@ -37,4 +35,47 @@ public class AuthController {
         UserResponse response = authService.verifyRegisterOtp(request);
         return ApiResponse.success("Dang ky thanh cong!", response);
     }
+
+    @PostMapping ("/login")
+    public ApiResponse<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request) {
+        LoginResponse response = authService.login(request);
+
+        return ApiResponse.success(
+                "Đăng nhập thành công",
+                response
+        );
+    }
+
+    @PostMapping ("/forgot-password")
+    public ApiResponse<Void> forgotPassword (
+            @Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ApiResponse.success(
+                "Nếu số điện thoại đã đăng ký, OTP sẽ được gửi đến số điện thoại đó",
+                null
+        );
+    }
+
+    @PostMapping ("/reset-password")
+    public ApiResponse<Void> resetPassword (
+            @Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ApiResponse.success(
+                "Đã đặt lại mật khẩu",
+                null
+        );
+    }
+
+    @PatchMapping ("/change-password")
+    public ApiResponse<Void> changePassword (
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(currentUser.getId(), request);
+        return ApiResponse.success(
+                "Đổi mật khẩu thành công!",
+                null
+        );
+    }
+
 }

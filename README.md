@@ -1,4 +1,4 @@
-# UrbanMart Backend
+﻿# UrbanMart Backend
 
 Web bán thực phẩm đa chi nhánh ứng dụng AI hỗ trợ mua sắm thông minh.
 
@@ -75,18 +75,18 @@ Ngoài các dependency mặc định lúc tạo project bằng Spring Initializr
 <dependency>
     <groupId>io.jsonwebtoken</groupId>
     <artifactId>jjwt-api</artifactId>
-    <version>0.12.6</version>
+    <version>0.13.0</version>
 </dependency>
 <dependency>
     <groupId>io.jsonwebtoken</groupId>
     <artifactId>jjwt-impl</artifactId>
-    <version>0.12.6</version>
+    <version>0.13.0</version>
     <scope>runtime</scope>
 </dependency>
 <dependency>
     <groupId>io.jsonwebtoken</groupId>
     <artifactId>jjwt-jackson</artifactId>
-    <version>0.12.6</version>
+    <version>0.13.0</version>
     <scope>runtime</scope>
 </dependency>
 
@@ -137,12 +137,12 @@ curl http://localhost:8080/api/health
 
 ## Danh sách API đợt 1 (đã có bảng hỗ trợ)
 
-Xem chi tiết trong `docs/API_lam_trong_tuan_3.docx`. Trạng thái hiện tại:
+Trạng thái hiện tại:
 
 | Nhóm API | Trạng thái |
 |---|---|
 | Đăng ký + xác thực OTP (`/api/auth/register`, `/verify-otp`, `/resend-otp`) | ✅ Đã code xong |
-| Đăng nhập, quên/đổi mật khẩu | ⏳ Chưa làm |
+| Đăng nhập, quên/đổi mật khẩu (`/api/auth/login`, `/forgot-password`, `/reset-password`, `/change-password`) | ✅ Đã code xong |
 | Sửa thông tin cá nhân (`/api/users/me`) | ✅ Đã code xong |
 | CRUD địa chỉ | ⏳ Chưa làm |
 | Danh mục, thương hiệu, sản phẩm theo chi nhánh (phân trang, tìm kiếm) | ⏳ Chưa làm |

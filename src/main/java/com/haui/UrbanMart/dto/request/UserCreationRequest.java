@@ -26,6 +26,9 @@ public class UserCreationRequest {
     @Size(min = 8, message = "Mật khẩu phải có ít nhất 8 ký tự")
     private String password;
 
+    @NotBlank(message = "Mật khẩu xác nhận không được để trống")
+    private String confirmPassword;
+
     private LocalDate birthDate;
     private String gender;     
 }

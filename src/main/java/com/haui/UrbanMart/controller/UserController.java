@@ -17,13 +17,15 @@ import com.haui.UrbanMart.dto.request.UpdateProfileRequest;
 import com.haui.UrbanMart.dto.response.ApiResponse;
 import com.haui.UrbanMart.dto.response.UserResponse;
 import com.haui.UrbanMart.security.CustomUserDetails;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 
 @RestController
 @RequestMapping ("/api/users")
 @RequiredArgsConstructor 
+@SecurityRequirement(name = "bearerAuth")
 public class UserController {
-    private UserService userService;
+    private final UserService userService;
 
     @GetMapping("/me")
     public ApiResponse <UserResponse> getMyProfile (@AuthenticationPrincipal CustomUserDetails curentUser) {

@@ -130,6 +130,8 @@ jwt.expiration-ms=86400000
 
 Hoặc mở project bằng IntelliJ/VS Code rồi Run trực tiếp class `UrbanMartApplication`. Server mặc định chạy ở `http://localhost:8080`.
 
+Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+
 Test nhanh xác nhận chạy đúng:
 ```bash
 curl http://localhost:8080/api/health
@@ -144,8 +146,11 @@ Trạng thái hiện tại:
 | Đăng ký + xác thực OTP (`/api/auth/register`, `/verify-otp`, `/resend-otp`) | ✅ Đã code xong |
 | Đăng nhập, quên/đổi mật khẩu (`/api/auth/login`, `/forgot-password`, `/reset-password`, `/change-password`) | ✅ Đã code xong |
 | Sửa thông tin cá nhân (`/api/users/me`) | ✅ Đã code xong |
-| CRUD địa chỉ | ⏳ Chưa làm |
-| Danh mục, thương hiệu, sản phẩm theo chi nhánh (phân trang, tìm kiếm) | ⏳ Chưa làm |
+| CRUD địa chỉ (`/api/addresses`) | ✅ Đã code xong |
+| Chi nhánh gần khách (`/api/branches/nearby`) | ✅ Đã code xong |
+| Danh mục (`/api/categories`) | ✅ Đã code xong |
+| Thương hiệu (`/api/brands`) | ✅ Đã code xong |
+| Sản phẩm theo chi nhánh (phân trang, tìm kiếm) | ⏳ Chưa làm |
 | Yêu thích sản phẩm | ⏳ Chưa làm |
 | Giỏ hàng (thêm, xem, đổi số lượng) | ⏳ Chưa làm |
 

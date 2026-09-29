@@ -6,6 +6,7 @@ import com.haui.UrbanMart.dto.response.LoginResponse;
 import com.haui.UrbanMart.dto.response.UserResponse;
 import com.haui.UrbanMart.security.CustomUserDetails;
 import com.haui.UrbanMart.service.AuthService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -67,6 +68,7 @@ public class AuthController {
         );
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PatchMapping ("/change-password")
     public ApiResponse<Void> changePassword (
             @AuthenticationPrincipal CustomUserDetails currentUser,

@@ -43,7 +43,7 @@ Các file migration nằm trong `db/migrations/`, đặt tên `V1`, `V2`... và 
 **Trên macOS/Linux:**
 ```bash
 cd db/migrations
-for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql; do
+for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql; do
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart < "$f" || break
 done
 ```
@@ -51,7 +51,7 @@ done
 **Trên Windows (PowerShell)** — `<` không dùng được như Linux, phải dùng `Get-Content`:
 ```powershell
 cd db\migrations
-$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql"
+$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql"
 foreach ($f in $files) {
     Get-Content $f | docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart
     if ($LASTEXITCODE -ne 0) { break }
@@ -65,6 +65,8 @@ docker exec -it urbanmart-db psql -U urbanmart_user -d urbanmart -c "\dt"
 ```
 
 Phải thấy: `users`, `addresses`, `branches`, `categories`, `brands`, `products`, `branch_inventory`, `wishlists`, `carts`, `cart_items`.
+
+Migration `V5` thêm ràng buộc để mỗi user chỉ có một giỏ hàng trên mỗi chi nhánh và mỗi sản phẩm chỉ xuất hiện một lần trong cùng giỏ hàng. Nếu database đã có dữ liệu trùng, cần xử lý các bản ghi đó trước khi chạy migration.
 
 ## Bước 4 — Kiểm tra dependency trong `pom.xml`
 
@@ -166,7 +168,8 @@ UrbanMart/
 │       ├── V1__extensions_and_enums.sql
 │       ├── V2__users_and_addresses.sql
 │       ├── V3__branches_catalog_inventory.sql
-│       └── V4__wishlist_and_cart.sql
+│       ├── V4__wishlist_and_cart.sql
+│       └── V5__cart_uniqueness_constraints.sql
 └── src/main/
     ├── java/com/haui/UrbanMart/
     │   ├── entity/       (10 entity JPA + 4 enum)

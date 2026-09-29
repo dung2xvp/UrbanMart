@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import com.haui.UrbanMart.dto.request.UpdateProfileRequest;
 import com.haui.UrbanMart.dto.response.ApiResponse;
-import com.haui.UrbanMart.dto.response.UserResponse;
+import com.haui.UrbanMart.dto.response.UserProfileResponse;
 import com.haui.UrbanMart.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
@@ -28,16 +28,18 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/me")
-    public ApiResponse <UserResponse> getMyProfile (@AuthenticationPrincipal CustomUserDetails curentUser) {
-        UserResponse response = userService.getProfile(curentUser.getId());
+    public ApiResponse<UserProfileResponse> getMyProfile(
+            @AuthenticationPrincipal CustomUserDetails curentUser
+    ) {
+        UserProfileResponse response = userService.getProfile(curentUser.getId());
         return new ApiResponse<>("success", "Lấy hồ sơ thành công", response);
     }
     
     @PatchMapping("/me")
-    public ApiResponse<UserResponse> updateMyProfile(
+    public ApiResponse<UserProfileResponse> updateMyProfile(
             @AuthenticationPrincipal CustomUserDetails currentUser,
             @Valid @RequestBody UpdateProfileRequest request) {
-        UserResponse response = userService.updateProfile(currentUser.getId(), request);
+        UserProfileResponse response = userService.updateProfile(currentUser.getId(), request);
         return new ApiResponse<>("success", "Cập nhật hồ sơ thành công", response);
     }
 }

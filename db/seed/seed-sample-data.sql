@@ -77,9 +77,9 @@ BEGIN
     VALUES ('SP003', 'Hanh la', cat_rau_nem_id, 'bo', 5000, 'ACTIVE')
     RETURNING id INTO prod_hanhla_id;
 
-    -- Cam - dang sale, dung de test sort "dang khuyen mai"
-    INSERT INTO products (sku, name, category_id, unit, base_price, sale_price, sale_start_at, sale_end_at, status)
-    VALUES ('SP004', 'Cam sanh', cat_cam_buoi_id, 'kg', 35000, 29000, now() - interval '1 day', now() + interval '7 day', 'ACTIVE')
+    -- Cam
+    INSERT INTO products (sku, name, category_id, unit, base_price, status)
+    VALUES ('SP004', 'Cam sanh', cat_cam_buoi_id, 'kg', 35000, 'ACTIVE')
     RETURNING id INTO prod_cam_id;
 
     INSERT INTO products (sku, name, category_id, unit, base_price, status)
@@ -99,13 +99,13 @@ BEGIN
     VALUES ('SP008', 'Ca loc', cat_ca_id, 'kg', 80000, 'ACTIVE')
     RETURNING id INTO prod_caloc_id;
 
-    -- Sua - co thuong hieu, 1 san pham dang sale
+    -- Sua - co thuong hieu
     INSERT INTO products (sku, name, category_id, brand_id, unit, base_price, status)
     VALUES ('SP009', 'Sua tuoi Vinamilk 1L', cat_sua_id, brand_vinamilk_id, 'hop', 32000, 'ACTIVE')
     RETURNING id INTO prod_suavinamilk_id;
 
-    INSERT INTO products (sku, name, category_id, brand_id, unit, base_price, sale_price, sale_start_at, sale_end_at, status)
-    VALUES ('SP010', 'Sua tuoi TH true MILK 1L', cat_sua_id, brand_thtruemilk_id, 'hop', 34000, 30000, now() - interval '1 day', now() + interval '7 day', 'ACTIVE')
+    INSERT INTO products (sku, name, category_id, brand_id, unit, base_price, status)
+    VALUES ('SP010', 'Sua tuoi TH true MILK 1L', cat_sua_id, brand_thtruemilk_id, 'hop', 34000, 'ACTIVE')
     RETURNING id INTO prod_suathtrue_id;
 
     -- ---------- TON KHO THEO CHI NHANH ----------

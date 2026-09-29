@@ -45,15 +45,6 @@ public class Product {
     @Column(name = "base_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal basePrice;
 
-    @Column(name = "sale_price", precision = 12, scale = 2)
-    private BigDecimal salePrice;
-
-    @Column(name = "sale_start_at")
-    private OffsetDateTime saleStartAt;
-
-    @Column(name = "sale_end_at")
-    private OffsetDateTime saleEndAt;
-
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
@@ -70,17 +61,4 @@ public class Product {
     @Generated(event = EventType.INSERT)
     private OffsetDateTime createdAt;
 
-    /**
-     * Gia hien thi thuc te: uu tien sale_price neu dang trong khoang khuyen
-     * mai, nguoc lai dung base_price. Dung ham nay o moi noi can hien thi gia
-     * (danh sach san pham, chi tiet, gio hang...) thay vi lap lai logic.
-     */
-    @Transient
-    public BigDecimal getDisplayPrice() {
-        OffsetDateTime now = OffsetDateTime.now();
-        boolean onSale = salePrice != null
-                && saleStartAt != null && saleEndAt != null
-                && !now.isBefore(saleStartAt) && !now.isAfter(saleEndAt);
-        return onSale ? salePrice : basePrice;
-    }
 }

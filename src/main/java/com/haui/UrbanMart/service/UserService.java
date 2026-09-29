@@ -1,7 +1,7 @@
 package com.haui.UrbanMart.service;
 
 import com.haui.UrbanMart.dto.request.UpdateProfileRequest;
-import com.haui.UrbanMart.dto.response.UserResponse;
+import com.haui.UrbanMart.dto.response.UserProfileResponse;
 import com.haui.UrbanMart.exception.ConflictException;
 import com.haui.UrbanMart.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,13 +43,13 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public UserResponse getProfile(UUID userId) {
+    public UserProfileResponse getProfile(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay user"));
-        return UserResponse.from(user);
+        return UserProfileResponse.from(user);
     }
 
-    public UserResponse updateProfile(UUID userId, UpdateProfileRequest request) {
+    public UserProfileResponse updateProfile(UUID userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay user"));
 
@@ -71,6 +71,6 @@ public class UserService {
         }
 
         User saved = userRepository.save(user);
-        return UserResponse.from(saved);
+        return UserProfileResponse.from(saved);
     }
 }

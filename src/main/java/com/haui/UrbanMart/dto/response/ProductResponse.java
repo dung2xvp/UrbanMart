@@ -1,10 +1,12 @@
 package com.haui.UrbanMart.dto.response;
 
 import com.haui.UrbanMart.entity.Product;
+import com.haui.UrbanMart.service.ProductPrice;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Getter
@@ -21,11 +23,19 @@ public class ProductResponse {
     private String unit;
     private BigDecimal basePrice;
     private BigDecimal displayPrice;
+    private BigDecimal discountPercent;
+    private OffsetDateTime discountStartsAt;
+    private OffsetDateTime discountEndsAt;
+    private boolean dailyFresh;
     private String imageUrl;
     private int stockQuantity;
     private boolean inStock;
 
-    public static ProductResponse from(Product product, int stockQuantity) {
+    public static ProductResponse from(
+            Product product,
+            int stockQuantity,
+            ProductPrice productPrice
+    ) {
         return new ProductResponse(
                 product.getId(),
                 product.getSku(),
@@ -36,8 +46,12 @@ public class ProductResponse {
                 product.getBrand() == null ? null : product.getBrand().getId(),
                 product.getBrand() == null ? null : product.getBrand().getName(),
                 product.getUnit(),
-                product.getBasePrice(),
-                product.getBasePrice(),
+                productPrice.basePrice(),
+                productPrice.price(),
+                productPrice.discountPercent(),
+                productPrice.discountStartsAt(),
+                productPrice.discountEndsAt(),
+                product.isDailyFresh(),
                 product.getImageUrl(),
                 stockQuantity,
                 stockQuantity > 0

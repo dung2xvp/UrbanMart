@@ -1,7 +1,7 @@
 -- ============================================================
 -- SEED DATA - CHI DUNG DE TEST O MOI TRUONG DEV/LOCAL
 -- Khong phai migration, khong dat ten Vx, khong chay tu dong
--- qua Flyway. Chay tay 1 lan sau khi da co du 10 bang (V1-V4).
+-- qua Flyway. Chay tay 1 lan sau khi da chay migration V1-V6.
 -- ============================================================
 
 DO $$
@@ -108,6 +108,29 @@ BEGIN
     VALUES ('SP010', 'Sua tuoi TH true MILK 1L', cat_sua_id, brand_thtruemilk_id, 'hop', 34000, 'ACTIVE')
     RETURNING id INTO prod_suathtrue_id;
 
+    -- Nhom san pham hang ngay dung de test API /api/products/daily-fresh.
+    UPDATE products
+    SET is_daily_fresh = true
+    WHERE id IN (
+        prod_thitbo_id,
+        prod_thitheo_id,
+        prod_caloc_id,
+        prod_suavinamilk_id,
+        prod_suathtrue_id
+    );
+
+    -- ---------- GIAM GIA ----------
+    -- Hai dot dang hieu luc de test API /api/products/promotions va gia sau giam.
+    INSERT INTO product_discounts (
+        product_id, discount_percent, starts_at, ends_at
+    ) VALUES
+        (prod_cam_id, 20.00, now() - interval '1 day', now() + interval '7 days'),
+        (prod_suathtrue_id, 10.00, now() - interval '1 day', now() + interval '7 days'),
+        -- Dot sap dien ra va da ket thuc de test danh sach admin,
+        -- khong duoc tra ve boi API san pham khuyen mai.
+        (prod_buoi_id, 15.00, now() + interval '1 day', now() + interval '8 days'),
+        (prod_suavinamilk_id, 5.00, now() - interval '8 days', now() - interval '1 day');
+
     -- ---------- TON KHO THEO CHI NHANH ----------
     -- Ca 2 chi nhanh deu co du 10 san pham, chi khac nhau ve so luong ton
     -- (thuc te hon la ep giong het tung con so, nhung khong con truong hop
@@ -136,5 +159,5 @@ BEGIN
         (branch_caugiay_id, prod_suavinamilk_id, 50),
         (branch_caugiay_id, prod_suathtrue_id, 40);
 
-    RAISE NOTICE 'Seed data OK: 2 chi nhanh, 10 danh muc, 2 thuong hieu, 10 san pham, 20 dong ton kho (moi chi nhanh du 10 san pham).';
+    RAISE NOTICE 'Seed data OK: 2 chi nhanh, 10 danh muc, 2 thuong hieu, 10 san pham, 4 dot giam gia, 20 dong ton kho.';
 END $$;

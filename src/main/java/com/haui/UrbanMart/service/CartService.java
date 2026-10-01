@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -26,6 +27,7 @@ public class CartService {
     private final BranchRepository branchRepository;
     private final ProductRepository productRepository;
     private final BranchInventoryRepository branchInventoryRepository;
+    private final ProductPricingService productPricingService;
     @Transactional(readOnly = true)
     public CartResponse getCart(UUID userId, UUID branchId) {
         validateSellingBranch(branchId);
@@ -88,7 +90,7 @@ public class CartService {
         }
 
         item.setQuantity(updatedQuantity);
-        item.setUnitPrice(product.getBasePrice());
+        item.setUnitPrice(productPricingService.getCurrentPrice(product).price());
         cartItemRepository.save(item);
 
         return buildCartResponse(cart);
@@ -117,6 +119,9 @@ public class CartService {
         }
 
         item.setQuantity(request.getQuantity());
+        item.setUnitPrice(productPricingService.getCurrentPrice(
+                item.getProduct()
+        ).price());
         cartItemRepository.save(item);
 
         return buildCartResponse(item.getCart());
@@ -145,9 +150,15 @@ public class CartService {
         int totalQuantity = 0;
         BigDecimal totalAmount = BigDecimal.ZERO;
 
-        for (CartItem item : cartItemRepository.findAllByCartId(cart.getId())) {
+        List<CartItem> cartItems = cartItemRepository.findAllByCartId(cart.getId());
+        Map<UUID, ProductPrice> prices = productPricingService.getCurrentPrices(
+                cartItems.stream().map(item -> item.getProduct()).toList()
+        );
+
+        for (CartItem item : cartItems) {
             UUID productId = item.getProduct().getId();
-            BigDecimal subtotal = item.getUnitPrice()
+            ProductPrice productPrice = prices.get(productId);
+            BigDecimal subtotal = productPrice.price()
                     .multiply(BigDecimal.valueOf(item.getQuantity()));
 
             responseItems.add(new CartItemResponse(
@@ -156,7 +167,11 @@ public class CartService {
                     item.getProduct().getName(),
                     item.getProduct().getImageUrl(),
                     item.getQuantity(),
-                    item.getUnitPrice(),
+                    productPrice.basePrice(),
+                    productPrice.price(),
+                    productPrice.discountPercent(),
+                    productPrice.discountStartsAt(),
+                    productPrice.discountEndsAt(),
                     subtotal
             ));
 

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -24,12 +25,21 @@ public class WishlistService {
     private final WishlistRepository wishlistRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final ProductPricingService productPricingService;
+
     @Transactional(readOnly = true)
     public List<WishlistProductResponse> getMyWishlist(UUID userId) {
-        return wishlistRepository
-                .findAllByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(WishlistProductResponse::from)
+        List<Wishlist> wishlists = wishlistRepository
+                .findAllByUserIdOrderByCreatedAtDesc(userId);
+        Map<UUID, ProductPrice> prices = productPricingService.getCurrentPrices(
+                wishlists.stream().map(Wishlist::getProduct).toList()
+        );
+
+        return wishlists.stream()
+                .map(wishlist -> WishlistProductResponse.from(
+                        wishlist,
+                        prices.get(wishlist.getProduct().getId())
+                ))
                 .toList();
     }
 

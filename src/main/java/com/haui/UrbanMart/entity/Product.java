@@ -10,6 +10,8 @@ import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -44,6 +46,12 @@ public class Product {
 
     @Column(name = "base_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal basePrice;
+
+    @Column(name = "is_daily_fresh", nullable = false)
+    private boolean dailyFresh = false;
+
+    @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
+    private List<ProductDiscount> discounts = new ArrayList<>();
 
     @Column(name = "image_url", length = 500)
     private String imageUrl;

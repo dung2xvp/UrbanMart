@@ -24,6 +24,19 @@ public interface ProductDiscountRepository extends JpaRepository<ProductDiscount
             @Param("now") OffsetDateTime now
     );
 
+    @Query("""
+            select discount
+            from ProductDiscount discount
+            join fetch discount.product product
+            where product.id in :productIds
+              and discount.startsAt <= :now
+              and discount.endsAt > :now
+            """)
+    List<ProductDiscount> findActiveByProductIds(
+            @Param("productIds") List<UUID> productIds,
+            @Param("now") OffsetDateTime now
+    );
+
     List<ProductDiscount> findAllByOrderByCreatedAtDesc();
 
     @Query("""

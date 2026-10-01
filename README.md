@@ -43,30 +43,70 @@ Các file migration nằm trong `db/migrations/`, đặt tên `V1`, `V2`... và 
 **Trên macOS/Linux:**
 ```bash
 cd db/migrations
-for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql; do
-  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart < "$f" || break
+for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql; do
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1 < "$f" || break
 done
 ```
 
 **Trên Windows (PowerShell)** — `<` không dùng được như Linux, phải dùng `Get-Content`:
 ```powershell
 cd db\migrations
-$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql"
+$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql"
 foreach ($f in $files) {
-    Get-Content $f | docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart
+    Get-Content -Raw $f | docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
     if ($LASTEXITCODE -ne 0) { break }
 }
 ```
 
-Kiểm tra đã tạo đủ 10 bảng:
+Nếu database đã chạy V1–V5, chỉ chạy migration mới:
+
+```powershell
+Get-Content -Raw .\db\migrations\V6__product_discounts.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+```
+
+Nếu database đã chạy V1–V6, chỉ chạy migration mới:
+
+```powershell
+Get-Content -Raw .\db\migrations\V7__daily_fresh_products.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+```
+
+Kiểm tra các bảng:
 
 ```bash
 docker exec -it urbanmart-db psql -U urbanmart_user -d urbanmart -c "\dt"
 ```
 
-Phải thấy: `users`, `addresses`, `branches`, `categories`, `brands`, `products`, `branch_inventory`, `wishlists`, `carts`, `cart_items`.
+Các bảng chính gồm: `users`, `addresses`, `branches`, `categories`, `brands`, `products`, `branch_inventory`, `wishlists`, `carts`, `cart_items`, `product_discounts`.
 
 Migration `V5` thêm ràng buộc để mỗi user chỉ có một giỏ hàng trên mỗi chi nhánh và mỗi sản phẩm chỉ xuất hiện một lần trong cùng giỏ hàng. Nếu database đã có dữ liệu trùng, cần xử lý các bản ghi đó trước khi chạy migration.
+
+Migration `V6` tạo bảng `product_discounts`, giới hạn phần trăm và thời gian áp dụng, đồng thời không cho phép các đợt giảm giá của cùng sản phẩm chồng lấn. Migration này cũng bỏ các cột giảm giá cũ khỏi `products`; giá gốc vẫn nằm ở `products.base_price`.
+
+Migration `V7` thêm cột `products.is_daily_fresh`, mặc định `false`, để quản lý nhóm sản phẩm hàng ngày.
+
+Nếu database đã chạy V1–V6, chạy riêng V7 trước khi dùng code mới:
+
+```powershell
+Get-Content -Raw .\db\migrations\V7__daily_fresh_products.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+```
+
+## Bước 3.1 — Nạp dữ liệu mẫu (không bắt buộc)
+
+Chạy sau khi đã áp dụng migration V1–V7. Seed mẫu tạo chi nhánh, danh mục, thương hiệu, sản phẩm, tồn kho, nhóm sản phẩm hàng ngày và các đợt giảm giá đang hiệu lực/sắp diễn ra/đã kết thúc. Chỉ chạy một lần trên database trống vì các mã SKU và tên chi nhánh là duy nhất.
+
+**Trên macOS/Linux:**
+```bash
+docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1 < db/seed/seed-sample-data.sql
+```
+
+**Trên Windows (PowerShell):**
+```powershell
+Get-Content -Raw .\db\seed\seed-sample-data.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+```
 
 ## Bước 4 — Kiểm tra dependency trong `pom.xml`
 
@@ -139,24 +179,89 @@ Test nhanh xác nhận chạy đúng:
 curl http://localhost:8080/api/health
 ```
 
-## Danh sách API đợt 1 (đã có bảng hỗ trợ)
+## API hiện có và tuần 4
 
-Trạng thái hiện tại:
+| Nhóm API | Endpoint / chức năng | Trạng thái |
+|---|---|---|
+| Đăng ký + xác thực OTP | `/api/auth/register`, `/verify-otp`, `/resend-otp` | ✅ Đã code |
+| Đăng nhập, quên/đổi mật khẩu | `/api/auth/login`, `/forgot-password`, `/reset-password`, `/change-password` | ✅ Đã code |
+| Sửa thông tin cá nhân | `/api/users/me` | ✅ Đã code |
+| CRUD địa chỉ | `/api/addresses` | ✅ Đã code |
+| Chi nhánh gần khách | `/api/branches/nearby` | ✅ Đã code |
+| Danh mục và thương hiệu | `/api/categories`, `/api/brands` | ✅ Đã code |
+| Sản phẩm theo chi nhánh | `/api/products`, `/api/products/{productId}` | ✅ Có phân trang, tìm kiếm, lọc và sắp xếp |
+| Sản phẩm theo danh mục | `/api/products/category/{categoryId}` | ✅ Có thể lấy sản phẩm thuộc danh mục con |
+| Sản phẩm đang giảm giá | `/api/products/promotions` | ✅ Chỉ trả các đợt giảm đang hiệu lực |
+| Sản phẩm hàng ngày | `/api/products/daily-fresh` | ✅ Lọc theo cờ `is_daily_fresh` |
+| CRUD đợt giảm giá (admin) | `/api/admin/product-discounts` | ✅ Chỉ role `ADMIN` |
+| Sản phẩm bán chạy | Chưa triển khai | ⏳ Chưa làm theo phạm vi hiện tại |
+| Yêu thích sản phẩm | `/api/wishlists` | ✅ Đã code |
+| Giỏ hàng | `/api/cart` | ✅ Đã code |
 
-| Nhóm API | Trạng thái |
+### API danh sách sản phẩm tuần 4
+
+Các API danh sách sản phẩm cần `branchId`; phân trang dùng `page` bắt đầu từ `0` và `size` từ `1` đến `100`. Các endpoint lấy sản phẩm trả `basePrice` (giá gốc), `displayPrice` (giá khách trả), thông tin giảm giá nếu đang có đợt hiệu lực và `dailyFresh` cho biết sản phẩm có thuộc nhóm hàng ngày không.
+
+```http
+GET /api/products?branchId={branchId}&page=0&size=20
+GET /api/products/category/{categoryId}?branchId={branchId}&includeDescendants=true&page=0&size=20
+GET /api/products/promotions?branchId={branchId}&page=0&size=20
+GET /api/products/daily-fresh?branchId={branchId}&page=0&size=20
+```
+
+Danh sách chung, theo danh mục, khuyến mãi và hàng ngày hỗ trợ:
+
+| Query param | Ý nghĩa |
 |---|---|
-| Đăng ký + xác thực OTP (`/api/auth/register`, `/verify-otp`, `/resend-otp`) | ✅ Đã code xong |
-| Đăng nhập, quên/đổi mật khẩu (`/api/auth/login`, `/forgot-password`, `/reset-password`, `/change-password`) | ✅ Đã code xong |
-| Sửa thông tin cá nhân (`/api/users/me`) | ✅ Đã code xong |
-| CRUD địa chỉ (`/api/addresses`) | ✅ Đã code xong |
-| Chi nhánh gần khách (`/api/branches/nearby`) | ✅ Đã code xong |
-| Danh mục (`/api/categories`) | ✅ Đã code xong |
-| Thương hiệu (`/api/brands`) | ✅ Đã code xong |
-| Sản phẩm theo chi nhánh (phân trang, tìm kiếm) | ⏳ Chưa làm |
-| Yêu thích sản phẩm | ⏳ Chưa làm |
-| Giỏ hàng (thêm, xem, đổi số lượng) | ⏳ Chưa làm |
+| `keyword` | Tìm theo tên hoặc SKU |
+| `categoryId` | Lọc theo danh mục trên `/api/products` |
+| `includeDescendants` | Mặc định `true`; lấy cả danh mục con |
+| `brandIds` | Một hoặc nhiều UUID thương hiệu; lặp tham số để truyền nhiều giá trị |
+| `minPrice`, `maxPrice` | Lọc theo `displayPrice` sau khi áp dụng giảm giá |
+| `inStock` | `true` chỉ còn hàng, `false` hết hàng |
+| `sort` | `name_asc`, `name_desc`, `price_asc`, `price_desc`, `discount_desc`, `newest` |
 
-Các nhóm API còn lại (đặt hàng, thanh toán, AI, chat, dự báo tồn kho...) sẽ có migration `V5` trở đi khi triển khai tới.
+Sản phẩm được đưa vào nhóm hàng ngày bằng cột `products.is_daily_fresh`. Mặc định cờ là `false`; với dữ liệu mẫu, thịt bò, thịt heo, cá lóc và sữa được đánh dấu. Hiện chưa có API quản trị để bật/tắt cờ này; có thể cập nhật trực tiếp trong DB:
+
+```sql
+UPDATE products SET is_daily_fresh = true WHERE sku IN ('SP006', 'SP007', 'SP008');
+UPDATE products SET is_daily_fresh = false WHERE sku = 'SP008';
+```
+
+API hàng ngày cũng nhận các bộ lọc và sắp xếp ở bảng trên, ví dụ:
+
+```http
+GET /api/products/daily-fresh?branchId={branchId}&inStock=true&sort=price_asc&page=0&size=20
+```
+
+Ví dụ lọc sản phẩm theo danh mục, thương hiệu, tồn kho và khoảng giá:
+
+```http
+GET /api/products/category/{categoryId}?branchId={branchId}&includeDescendants=true&brandIds={brandId}&minPrice=10000&maxPrice=50000&inStock=true&sort=price_asc&page=0&size=20
+```
+
+API giảm giá dành cho admin:
+
+```http
+GET    /api/admin/product-discounts
+GET    /api/admin/product-discounts/{id}
+POST   /api/admin/product-discounts
+PUT    /api/admin/product-discounts/{id}
+DELETE /api/admin/product-discounts/{id}
+```
+
+Request tạo/cập nhật gồm `productId`, `discountPercent`, `startsAt`, `endsAt`. Thời gian dùng định dạng ISO-8601 có timezone. Không cho phép mức giảm của cùng sản phẩm chồng lấn thời gian.
+
+```json
+{
+  "productId": "UUID-san-pham",
+  "discountPercent": 20.00,
+  "startsAt": "2026-10-01T00:00:00+07:00",
+  "endsAt": "2026-10-08T00:00:00+07:00"
+}
+```
+
+Các nhóm API còn lại (đặt hàng, thanh toán, AI, chat, dự báo tồn kho...) sẽ được bổ sung khi triển khai các giai đoạn tiếp theo.
 
 ## Cấu trúc thư mục liên quan tới DB & hạ tầng
 
@@ -164,15 +269,19 @@ Các nhóm API còn lại (đặt hàng, thanh toán, AI, chat, dự báo tồn 
 UrbanMart/
 ├── docker-compose.yml
 ├── db/
-│   └── migrations/
-│       ├── V1__extensions_and_enums.sql
-│       ├── V2__users_and_addresses.sql
-│       ├── V3__branches_catalog_inventory.sql
-│       ├── V4__wishlist_and_cart.sql
-│       └── V5__cart_uniqueness_constraints.sql
+│   ├── migrations/
+│   │   ├── V1__extensions_and_enums.sql
+│   │   ├── V2__users_and_addresses.sql
+│   │   ├── V3__branches_catalog_inventory.sql
+│   │   ├── V4__wishlist_and_cart.sql
+│   │   ├── V5__cart_uniqueness_constraints.sql
+│   │   ├── V6__product_discounts.sql
+│   │   └── V7__daily_fresh_products.sql
+│   └── seed/
+│   │   └── seed-sample-data.sql
 └── src/main/
     ├── java/com/haui/UrbanMart/
-    │   ├── entity/       (10 entity JPA + 4 enum)
+    │   ├── entity/       (JPA entities and enums)
     │   ├── repository/   (Spring Data JPA)
     │   ├── security/     (JWT, UserDetails, filter, entry point/access denied)
     │   ├── config/        (SecurityConfig)
@@ -192,6 +301,7 @@ UrbanMart/
 |---|---|---|
 | `password authentication failed` khi connect DBeaver/app | Có PostgreSQL khác chiếm cổng 5432, hoặc password đã bị đổi trên container cũ | Kiểm tra `Get-NetTCPConnection -LocalPort 5432`; hoặc chạy `ALTER USER urbanmart_user WITH PASSWORD 'urbanmart_password';` trong container |
 | `relation "xxx" does not exist` | Chưa chạy đủ/đúng thứ tự migration | Chạy lại Bước 3, kiểm tra bằng `\dt` |
+| `column sale_price does not exist` | Code hoặc schema chưa đồng bộ sau khi chuyển giảm giá sang bảng riêng | Chạy V6 nếu database chưa áp dụng và dùng code mới |
 | `'<' operator is reserved for future use` (PowerShell) | Dùng `<` để redirect như Linux, PowerShell không hỗ trợ | Dùng `Get-Content file.sql \| docker exec -i ...` thay vì `< file.sql` |
 | `Could not resolve placeholder 'jwt.secret'` | Thiếu `jwt.secret`/`jwt.expiration-ms` trong `application.properties` | Thêm đúng 2 dòng như Bước 5 |
 | `GenerationTime cannot be resolved` (entity) | Bản Hibernate mới đã bỏ `org.hibernate.annotations.GenerationTime` | Dùng `@Generated(event = EventType.INSERT)` với `org.hibernate.generator.EventType` thay vì `GenerationTime.INSERT` |

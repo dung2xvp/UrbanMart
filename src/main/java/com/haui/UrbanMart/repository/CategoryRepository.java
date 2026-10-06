@@ -23,4 +23,8 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
             SELECT id FROM category_tree
             """, nativeQuery = true)
     List<UUID> findSelfAndDescendantIds(UUID categoryId);
+
+    boolean existsByParent_Id(UUID parentId);
+
+
 }

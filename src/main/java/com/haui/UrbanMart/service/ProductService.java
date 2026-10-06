@@ -1,10 +1,13 @@
 package com.haui.UrbanMart.service;
 
+import com.haui.UrbanMart.dto.request.ProductWriteRequest;
+import com.haui.UrbanMart.dto.response.ProductAdminResponse;
 import com.haui.UrbanMart.dto.response.ProductResponse;
 import com.haui.UrbanMart.entity.*;
 import com.haui.UrbanMart.exception.ResourceNotFoundException;
 import com.haui.UrbanMart.repository.BranchInventoryRepository;
 import com.haui.UrbanMart.repository.BranchRepository;
+import com.haui.UrbanMart.repository.BrandRepository;
 import com.haui.UrbanMart.repository.CategoryRepository;
 import com.haui.UrbanMart.repository.ProductListSort;
 import com.haui.UrbanMart.repository.ProductRepository;
@@ -16,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,7 +31,66 @@ public class ProductService {
     private final BranchInventoryRepository branchInventoryRepository;
     private final BranchRepository branchRepository;
     private final CategoryRepository categoryRepository;
+    private final BrandRepository brandRepository;
     private final ProductPricingService productPricingService;
+
+    @Transactional(readOnly = true)
+    public Page<ProductAdminResponse> getAdminProducts(Pageable pageable) {
+        return productRepository.findAll(pageable)
+                .map(ProductAdminResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public ProductAdminResponse getAdminProduct(UUID productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
+        return ProductAdminResponse.from(product);
+    }
+
+    @Transactional
+    public ProductAdminResponse createProduct(ProductWriteRequest request) {
+        Product product = new Product();
+        product.setSku(String.format(
+                Locale.ROOT,
+                "SP%06d",
+                productRepository.nextSkuValue()
+        ));
+        applyProductRequest(product, request);
+        return ProductAdminResponse.from(productRepository.save(product));
+    }
+
+    @Transactional
+    public ProductAdminResponse updateProduct(UUID productId, ProductWriteRequest request) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
+        applyProductRequest(product, request);
+        return ProductAdminResponse.from(productRepository.save(product));
+    }
+
+    @Transactional
+    public void discontinueProduct(UUID productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
+        product.setStatus(ProductStatus.DISCONTINUED);
+    }
+
+    private void applyProductRequest(Product product, ProductWriteRequest request) {
+        Category category = categoryRepository.findById(request.categoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục"));
+
+        Brand brand = request.brandId() == null
+                ? null
+                : brandRepository.findById(request.brandId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thương hiệu"));
+
+        product.setName(request.name().trim());
+        product.setDescription(request.description());
+        product.setCategory(category);
+        product.setBrand(brand);
+        product.setUnit(request.unit().trim());
+        product.setBasePrice(request.basePrice());
+        product.setImageUrl(request.imageUrl());
+    }
 
     @Transactional(readOnly = true)
     public Page<ProductResponse> getProducts(

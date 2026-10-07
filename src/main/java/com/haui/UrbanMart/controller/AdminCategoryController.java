@@ -5,6 +5,7 @@ import com.haui.UrbanMart.dto.request.CategoryUpdateRequest;
 import com.haui.UrbanMart.dto.response.ApiResponse;
 import com.haui.UrbanMart.dto.response.CategoryDto;
 import com.haui.UrbanMart.service.CategoryService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping ("/api/admin/categories")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class AdminCategoryController {
     private final CategoryService categoryService;
 

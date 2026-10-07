@@ -5,6 +5,7 @@ import com.haui.UrbanMart.dto.response.ApiResponse;
 import com.haui.UrbanMart.dto.response.BranchAdminResponse;
 import com.haui.UrbanMart.exception.BadRequestException;
 import com.haui.UrbanMart.service.BranchAdminService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,6 +25,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/branches")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class AdminBranchController {
 
     private final BranchAdminService branchAdminService;

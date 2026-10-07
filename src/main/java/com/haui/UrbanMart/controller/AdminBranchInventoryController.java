@@ -4,6 +4,7 @@ import com.haui.UrbanMart.dto.request.BranchInventoryWriteRequest;
 import com.haui.UrbanMart.dto.response.ApiResponse;
 import com.haui.UrbanMart.dto.response.BranchInventoryResponse;
 import com.haui.UrbanMart.service.BranchInventoryService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/branches")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class AdminBranchInventoryController {
 
     private final BranchInventoryService branchInventoryService;

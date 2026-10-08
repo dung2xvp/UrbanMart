@@ -74,6 +74,14 @@ public class ProductService {
         product.setStatus(ProductStatus.DISCONTINUED);
     }
 
+    @Transactional
+    public ProductAdminResponse restoreProduct(UUID productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
+        product.setStatus(ProductStatus.ACTIVE);
+        return ProductAdminResponse.from(productRepository.save(product));
+    }
+
     private void applyProductRequest(Product product, ProductWriteRequest request) {
         Category category = categoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục"));

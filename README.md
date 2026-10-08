@@ -43,7 +43,7 @@ Các file migration nằm trong `db/migrations/`, đặt tên `V1`, `V2`... và 
 **Trên macOS/Linux:**
 ```bash
 cd db/migrations
-for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql; do
+for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql V8__product_sku_sequence.sql; do
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1 < "$f" || break
 done
 ```
@@ -51,7 +51,7 @@ done
 **Trên Windows (PowerShell)** — `<` không dùng được như Linux, phải dùng `Get-Content`:
 ```powershell
 cd db\migrations
-$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql"
+$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql","V8__product_sku_sequence.sql"
 foreach ($f in $files) {
     Get-Content -Raw $f | docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
     if ($LASTEXITCODE -ne 0) { break }
@@ -70,6 +70,15 @@ Nếu database đã chạy V1–V6, chỉ chạy migration mới:
 ```powershell
 Get-Content -Raw .\db\migrations\V7__daily_fresh_products.sql |
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+Get-Content -Raw .\db\migrations\V8__product_sku_sequence.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+```
+
+Nếu database đã chạy V1–V7 nhưng POST `/api/admin/products` báo `relation "product_sku_seq" does not exist`, chỉ cần chạy V8:
+
+```powershell
+Get-Content -Raw .\db\migrations\V8__product_sku_sequence.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
 ```
 
 Kiểm tra các bảng:
@@ -86,16 +95,20 @@ Migration `V6` tạo bảng `product_discounts`, giới hạn phần trăm và t
 
 Migration `V7` thêm cột `products.is_daily_fresh`, mặc định `false`, để quản lý nhóm sản phẩm hàng ngày.
 
-Nếu database đã chạy V1–V6, chạy riêng V7 trước khi dùng code mới:
+Migration `V8` tạo sequence `product_sku_seq` dùng để sinh SKU tự động khi tạo sản phẩm và khởi tạo sequence tiếp nối mã SKU `SP...` hiện có.
+
+Nếu database đã chạy V1–V6, chạy V7 và V8 trước khi dùng code mới:
 
 ```powershell
 Get-Content -Raw .\db\migrations\V7__daily_fresh_products.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+Get-Content -Raw .\db\migrations\V8__product_sku_sequence.sql |
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
 ```
 
 ## Bước 3.1 — Nạp dữ liệu mẫu (không bắt buộc)
 
-Chạy sau khi đã áp dụng migration V1–V7. Seed mẫu tạo chi nhánh, danh mục, thương hiệu, sản phẩm, tồn kho, nhóm sản phẩm hàng ngày và các đợt giảm giá đang hiệu lực/sắp diễn ra/đã kết thúc. Chỉ chạy một lần trên database trống vì các mã SKU và tên chi nhánh là duy nhất.
+Chạy sau khi đã áp dụng migration V1–V8. Seed mẫu tạo chi nhánh, danh mục, thương hiệu, sản phẩm, tồn kho, nhóm sản phẩm hàng ngày và các đợt giảm giá đang hiệu lực/sắp diễn ra/đã kết thúc. Chỉ chạy một lần trên database trống vì các mã SKU và tên chi nhánh là duy nhất.
 
 **Trên macOS/Linux:**
 ```bash
@@ -252,6 +265,14 @@ DELETE /api/admin/product-discounts/{id}
 
 Request tạo/cập nhật gồm `productId`, `discountPercent`, `startsAt`, `endsAt`. Thời gian dùng định dạng ISO-8601 có timezone. Không cho phép mức giảm của cùng sản phẩm chồng lấn thời gian.
 
+Sản phẩm đã ngừng kinh doanh có thể được khôi phục riêng, không cần mở quyền sửa `status` trong request cập nhật thông tin sản phẩm:
+
+```http
+PATCH /api/admin/products/{productId}/restore
+```
+
+Endpoint này chuyển trạng thái sản phẩm về `ACTIVE`; endpoint `DELETE /api/admin/products/{productId}` vẫn chuyển sang `DISCONTINUED`.
+
 ```json
 {
   "productId": "UUID-san-pham",
@@ -276,7 +297,8 @@ UrbanMart/
 │   │   ├── V4__wishlist_and_cart.sql
 │   │   ├── V5__cart_uniqueness_constraints.sql
 │   │   ├── V6__product_discounts.sql
-│   │   └── V7__daily_fresh_products.sql
+│   │   ├── V7__daily_fresh_products.sql
+│   │   └── V8__product_sku_sequence.sql
 │   └── seed/
 │   │   └── seed-sample-data.sql
 └── src/main/
@@ -300,7 +322,7 @@ UrbanMart/
 | Lỗi | Nguyên nhân | Cách xử lý |
 |---|---|---|
 | `password authentication failed` khi connect DBeaver/app | Có PostgreSQL khác chiếm cổng 5432, hoặc password đã bị đổi trên container cũ | Kiểm tra `Get-NetTCPConnection -LocalPort 5432`; hoặc chạy `ALTER USER urbanmart_user WITH PASSWORD 'urbanmart_password';` trong container |
-| `relation "xxx" does not exist` | Chưa chạy đủ/đúng thứ tự migration | Chạy lại Bước 3, kiểm tra bằng `\dt` |
+| `relation "xxx" does not exist` | Chưa chạy đủ/đúng thứ tự migration | Chạy migration còn thiếu ở Bước 3; lỗi `product_sku_seq` cần chạy V8 |
 | `column sale_price does not exist` | Code hoặc schema chưa đồng bộ sau khi chuyển giảm giá sang bảng riêng | Chạy V6 nếu database chưa áp dụng và dùng code mới |
 | `'<' operator is reserved for future use` (PowerShell) | Dùng `<` để redirect như Linux, PowerShell không hỗ trợ | Dùng `Get-Content file.sql \| docker exec -i ...` thay vì `< file.sql` |
 | `Could not resolve placeholder 'jwt.secret'` | Thiếu `jwt.secret`/`jwt.expiration-ms` trong `application.properties` | Thêm đúng 2 dòng như Bước 5 |

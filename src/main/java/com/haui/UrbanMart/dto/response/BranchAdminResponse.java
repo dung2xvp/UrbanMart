@@ -9,6 +9,7 @@ import java.util.UUID;
 
 public record BranchAdminResponse(
         UUID id,
+        UUID accountId,
         String name,
         String address,
         BigDecimal lat,
@@ -23,6 +24,7 @@ public record BranchAdminResponse(
     public static BranchAdminResponse from(Branch branch) {
         return new BranchAdminResponse(
                 branch.getId(),
+                branch.getAccount() == null ? null : branch.getAccount().getId(),
                 branch.getName(),
                 branch.getAddress(),
                 branch.getLat(),

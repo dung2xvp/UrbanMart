@@ -108,7 +108,14 @@ Get-Content -Raw .\db\migrations\V8__product_sku_sequence.sql |
 
 ## Bước 3.1 — Nạp dữ liệu mẫu (không bắt buộc)
 
-Chạy sau khi đã áp dụng migration V1–V8. Seed mẫu tạo chi nhánh, danh mục, thương hiệu, sản phẩm, tồn kho, nhóm sản phẩm hàng ngày và các đợt giảm giá đang hiệu lực/sắp diễn ra/đã kết thúc. Chỉ chạy một lần trên database trống vì các mã SKU và tên chi nhánh là duy nhất.
+Chạy sau khi đã áp dụng migration V1–V8. Seed mẫu tạo hai tài khoản `BRANCH` (gắn lần lượt với chi nhánh Hà Đông và Cầu Giấy), chi nhánh, danh mục, thương hiệu, sản phẩm, tồn kho, nhóm sản phẩm hàng ngày và các đợt giảm giá đang hiệu lực/sắp diễn ra/đã kết thúc. Chỉ chạy một lần trên database trống vì các mã SKU và tên chi nhánh là duy nhất.
+
+Tài khoản đăng nhập mẫu chỉ dùng cho dev/local:
+
+| Chi nhánh | Số điện thoại | Mật khẩu |
+|---|---|---|
+| Hà Đông | `0900000001` | `Branch@123` |
+| Cầu Giấy | `0900000002` | `Branch@123` |
 
 **Trên macOS/Linux:**
 ```bash
@@ -119,6 +126,41 @@ docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP
 ```powershell
 Get-Content -Raw .\db\seed\seed-sample-data.sql |
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+```
+
+Nếu đã chạy seed trước khi bổ sung tài khoản chi nhánh, **không chạy lại toàn bộ seed** vì các dữ liệu mẫu khác có thể bị trùng. Với database dev/local đã có hai chi nhánh mẫu, chạy đoạn SQL sau để tạo tài khoản (nếu chưa có) và gắn vào chi nhánh hiện tại:
+
+```powershell
+@'
+BEGIN;
+
+INSERT INTO users (full_name, phone, password_hash, role)
+VALUES
+    ('UrbanMart Ha Dong', '0900000001', crypt('Branch@123', gen_salt('bf')), 'BRANCH'),
+    ('UrbanMart Cau Giay', '0900000002', crypt('Branch@123', gen_salt('bf')), 'BRANCH')
+ON CONFLICT (phone) DO NOTHING;
+
+UPDATE branches b
+SET account_id = u.id
+FROM users u
+WHERE (b.name, u.phone) IN (
+    ('UrbanMart Ha Dong', '0900000001'),
+    ('UrbanMart Cau Giay', '0900000002')
+)
+AND u.role = 'BRANCH'
+AND b.account_id IS NULL;
+
+COMMIT;
+'@ | docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1
+```
+
+Đoạn cập nhật chỉ gắn tài khoản cho chi nhánh đang chưa có `account_id`. Nếu số điện thoại mẫu đã được dùng bởi tài khoản không phải `BRANCH`, hoặc chi nhánh đã gắn với tài khoản khác, cần kiểm tra và xử lý dữ liệu đó trước. Có thể xác nhận kết quả bằng:
+
+```sql
+SELECT b.name, b.account_id, u.phone, u.role
+FROM branches b
+LEFT JOIN users u ON u.id = b.account_id
+WHERE b.name IN ('UrbanMart Ha Dong', 'UrbanMart Cau Giay');
 ```
 
 ## Bước 4 — Kiểm tra dependency trong `pom.xml`

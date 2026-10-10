@@ -6,6 +6,9 @@
 
 DO $$
 DECLARE
+    account_hadong_id   UUID;
+    account_caugiay_id  UUID;
+
     branch_hadong_id   UUID;
     branch_caugiay_id  UUID;
 
@@ -37,12 +40,22 @@ BEGIN
     -- ---------- CHI NHANH ----------
     -- Toa do that o Ha Dong va Cau Giay, Ha Noi - dung de test API
     -- /api/branches/nearby tinh khoang cach cho dung nghia.
-    INSERT INTO branches (name, address, lat, lng, delivery_radius_km, is_warehouse, phone, opening_hours, status)
-    VALUES ('UrbanMart Ha Dong', 'So 339 Quoc lo 70B, Ha Dong, Ha Noi', 20.9721, 105.7797, 8, false, '02412345678', '{"mon_sun":"7:00-22:00"}', 'ACTIVE')
+    -- Tai khoan mau chi dung trong moi truong dev/local.
+    -- Mat khau dang nhap ca hai tai khoan: Branch@123
+    INSERT INTO users (full_name, phone, password_hash, role)
+    VALUES ('UrbanMart Ha Dong', '0900000001', crypt('Branch@123', gen_salt('bf')), 'BRANCH')
+    RETURNING id INTO account_hadong_id;
+
+    INSERT INTO users (full_name, phone, password_hash, role)
+    VALUES ('UrbanMart Cau Giay', '0900000002', crypt('Branch@123', gen_salt('bf')), 'BRANCH')
+    RETURNING id INTO account_caugiay_id;
+
+    INSERT INTO branches (account_id, name, address, lat, lng, delivery_radius_km, is_warehouse, phone, opening_hours, status)
+    VALUES (account_hadong_id, 'UrbanMart Ha Dong', 'So 339 Quoc lo 70B, Ha Dong, Ha Noi', 20.9721, 105.7797, 8, false, '02412345678', '{"mon_sun":"7:00-22:00"}', 'ACTIVE')
     RETURNING id INTO branch_hadong_id;
 
-    INSERT INTO branches (name, address, lat, lng, delivery_radius_km, is_warehouse, phone, opening_hours, status)
-    VALUES ('UrbanMart Cau Giay', 'So 10 Nguyen Trai, Cau Giay, Ha Noi', 21.0333, 105.7942, 6, false, '02423456789', '{"mon_sun":"7:00-22:00"}', 'ACTIVE')
+    INSERT INTO branches (account_id, name, address, lat, lng, delivery_radius_km, is_warehouse, phone, opening_hours, status)
+    VALUES (account_caugiay_id, 'UrbanMart Cau Giay', 'So 10 Nguyen Trai, Cau Giay, Ha Noi', 21.0333, 105.7942, 6, false, '02423456789', '{"mon_sun":"7:00-22:00"}', 'ACTIVE')
     RETURNING id INTO branch_caugiay_id;
 
     -- ---------- DANH MUC (cay 3 cap, giong vi du JSON API ban dua) ----------

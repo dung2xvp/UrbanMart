@@ -18,7 +18,7 @@ CREATE TABLE branches (
     status              branch_status NOT NULL DEFAULT 'ACTIVE',
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
--- account_id: 1 tai khoan (role = 'BRANCH') dung chung cho ca chi nhanh.
+-- account_id: moi tai khoan (role = 'BRANCH') gan toi da voi mot chi nhanh.
 -- is_warehouse: kho tong, khong ban truc tiep cho khach (dung o migration sau).
 
 CREATE TABLE categories (

@@ -6,6 +6,7 @@ import com.haui.UrbanMart.dto.response.BranchNearbyResponse;
 import com.haui.UrbanMart.exception.BadRequestException;
 import com.haui.UrbanMart.service.BranchAdminService;
 import com.haui.UrbanMart.service.BranchService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -37,6 +38,7 @@ public class BranchController {
     }
     private final BranchAdminService branchAdminService;
 
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping
     public ApiResponse<Page<BranchAdminResponse>> getBranches(
             @RequestParam(defaultValue = "0") int page,

@@ -1,16 +1,14 @@
 package com.haui.UrbanMart.controller;
 
-import com.haui.UrbanMart.dto.request.BranchInventoryWriteRequest;
 import com.haui.UrbanMart.dto.response.ApiResponse;
+import com.haui.UrbanMart.dto.response.BranchInventoryByCategoryResponse;
 import com.haui.UrbanMart.dto.response.BranchInventoryResponse;
+import com.haui.UrbanMart.dto.response.BranchInventorySummaryResponse;
 import com.haui.UrbanMart.service.BranchInventoryService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,23 +23,21 @@ public class AdminBranchInventoryController {
 
     private final BranchInventoryService branchInventoryService;
 
-    @PostMapping("/inventory")
-    public ApiResponse<BranchInventoryResponse> setStock(
-            @Valid @RequestBody BranchInventoryWriteRequest request
-    ) {
+    @GetMapping("/inventory/summary")
+    public ApiResponse<List<BranchInventorySummaryResponse>> getInventorySummaries() {
         return ApiResponse.success(
-                "Cập nhật tồn kho thành công",
-                branchInventoryService.setStock(request)
+                "Lấy tổng tồn kho các chi nhánh thành công",
+                branchInventoryService.getBranchInventorySummaries()
         );
     }
 
-    @GetMapping("/{branchId}/inventory")
-    public ApiResponse<List<BranchInventoryResponse>> getBranchInventory(
+    @GetMapping("/{branchId}/inventory/by-categories")
+    public ApiResponse<BranchInventoryByCategoryResponse> getInventoryByCategories(
             @PathVariable UUID branchId
     ) {
         return ApiResponse.success(
-                "Lấy tồn kho chi nhánh thành công",
-                branchInventoryService.getBranchInventory(branchId)
+                "Lấy tồn kho theo danh mục chi nhánh thành công",
+                branchInventoryService.getInventoryByCategories(branchId)
         );
     }
 }

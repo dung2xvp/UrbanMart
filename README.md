@@ -307,6 +307,19 @@ DELETE /api/admin/product-discounts/{id}
 
 Request tạo/cập nhật gồm `productId`, `discountPercent`, `startsAt`, `endsAt`. Thời gian dùng định dạng ISO-8601 có timezone. Không cho phép mức giảm của cùng sản phẩm chồng lấn thời gian.
 
+### API tồn kho chi nhánh
+
+Admin chỉ có quyền xem tồn kho; tài khoản role `BRANCH` chỉ xem và cập nhật tồn kho của chi nhánh được gắn với tài khoản đó:
+
+```http
+GET /api/admin/branches/inventory/summary
+GET /api/admin/branches/{branchId}/inventory/by-categories
+GET /api/branches/{branchId}/inventory/by-categories
+PUT /api/branches/{branchId}/inventory
+```
+
+API `PUT` nhận `productId` và `stockQuantity`. API tồn kho theo danh mục trả thông tin chi nhánh, tổng số lượng tồn và danh sách danh mục/nhóm danh mục cùng các sản phẩm có bản ghi tồn kho.
+
 Sản phẩm đã ngừng kinh doanh có thể được khôi phục riêng, không cần mở quyền sửa `status` trong request cập nhật thông tin sản phẩm:
 
 ```http

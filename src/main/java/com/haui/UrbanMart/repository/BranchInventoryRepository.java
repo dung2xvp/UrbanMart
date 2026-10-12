@@ -3,6 +3,7 @@ package com.haui.UrbanMart.repository;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,6 +18,7 @@ public interface BranchInventoryRepository extends
         BranchInventorySearchRepository {
     Optional<BranchInventory> findByBranchIdAndProductId(UUID branchId, UUID productId);
 
+    @EntityGraph(attributePaths = {"branch", "product", "product.category"})
     List<BranchInventory> findAllByBranchId(UUID branchId);
 
     @Modifying

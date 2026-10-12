@@ -1,17 +1,34 @@
 package com.haui.UrbanMart.repository;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.haui.UrbanMart.entity.Branch;
+import com.haui.UrbanMart.repository.projection.BranchInventorySummaryProjection;
 import com.haui.UrbanMart.repository.projection.BranchNearbyProjection;
 
 public interface BranchRepository extends JpaRepository <Branch, UUID> {
+
+    Optional<Branch> findByAccount_Id(UUID accountId);
+
+    @Query(value = """
+            SELECT b.id AS "branchId",
+                   b.name AS "branchName",
+                   b.address AS "branchAddress",
+                   b.phone AS "branchPhone",
+                   COALESCE(SUM(bi.stock_quantity), 0) AS "totalStock"
+            FROM branches b
+            LEFT JOIN branch_inventory bi ON bi.branch_id = b.id
+            GROUP BY b.id, b.name, b.address, b.phone
+            ORDER BY b.name
+            """, nativeQuery = true)
+    List<BranchInventorySummaryProjection> findInventorySummaries();
 
     @Query(value = """
             SELECT

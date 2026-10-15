@@ -2,6 +2,8 @@ package com.haui.UrbanMart.controller;
 
 import com.haui.UrbanMart.dto.response.ApiResponse;
 import com.haui.UrbanMart.dto.response.BranchInventoryByCategoryResponse;
+import com.haui.UrbanMart.dto.response.BranchInventoryCategoryReportResponse;
+import com.haui.UrbanMart.dto.response.BranchInventoryReportResponse;
 import com.haui.UrbanMart.dto.response.BranchInventoryResponse;
 import com.haui.UrbanMart.dto.response.BranchInventorySummaryResponse;
 import com.haui.UrbanMart.service.BranchInventoryService;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/branches")
@@ -38,6 +41,26 @@ public class AdminBranchInventoryController {
         return ApiResponse.success(
                 "Lấy tồn kho theo danh mục chi nhánh thành công",
                 branchInventoryService.getInventoryByCategories(branchId)
+        );
+    }
+
+    @GetMapping("/{branchId}/inventory/summary")
+    public ApiResponse<BranchInventoryReportResponse> getInventoryReport(
+            @PathVariable UUID branchId
+    ) {
+        return ApiResponse.success(
+                "Lấy báo cáo tồn kho chi nhánh thành công",
+                branchInventoryService.getInventoryReport(branchId)
+        );
+    }
+
+    @GetMapping("/{branchId}/inventory/categories")
+    public ApiResponse<List<BranchInventoryCategoryReportResponse>> getInventoryCategoryReport(
+            @PathVariable UUID branchId
+    ) {
+        return ApiResponse.success(
+                "Lấy báo cáo tồn kho theo danh mục thành công",
+                branchInventoryService.getInventoryCategoryReport(branchId)
         );
     }
 }

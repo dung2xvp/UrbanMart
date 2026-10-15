@@ -6,6 +6,7 @@ import com.haui.UrbanMart.entity.Branch;
 import com.haui.UrbanMart.entity.BranchStatus;
 import com.haui.UrbanMart.exception.BadRequestException;
 import com.haui.UrbanMart.exception.ResourceNotFoundException;
+import com.haui.UrbanMart.repository.BranchInventoryRepository;
 import com.haui.UrbanMart.repository.BranchRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,6 +24,7 @@ public class BranchAdminService {
     private static final BigDecimal DEFAULT_DELIVERY_RADIUS_KM = BigDecimal.valueOf(5);
 
     private final BranchRepository branchRepository;
+    private final BranchInventoryRepository branchInventoryRepository;
 
     @Transactional(readOnly = true)
     public Page<BranchAdminResponse> getBranches(Pageable pageable) {
@@ -44,7 +46,9 @@ public class BranchAdminService {
         if (branch.getStatus() == null) {
             branch.setStatus(BranchStatus.ACTIVE);
         }
-        return BranchAdminResponse.from(branchRepository.save(branch));
+        Branch savedBranch = branchRepository.save(branch);
+        branchInventoryRepository.insertZeroStockForAllProducts(savedBranch.getId());
+        return BranchAdminResponse.from(savedBranch);
     }
 
     @Transactional

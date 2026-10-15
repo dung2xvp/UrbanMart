@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +18,15 @@ import com.haui.UrbanMart.repository.projection.BranchNearbyProjection;
 public interface BranchRepository extends JpaRepository <Branch, UUID> {
 
     Optional<Branch> findByAccount_Id(UUID accountId);
+    List<Branch> findAllByAccount_IdIn(List<UUID> accountIds);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT branch
+            FROM Branch branch
+            WHERE branch.id = :branchId
+            """)
+    Optional<Branch> findForUpdateById(@Param("branchId") UUID branchId);
 
     @Query(value = """
             SELECT b.id AS "branchId",

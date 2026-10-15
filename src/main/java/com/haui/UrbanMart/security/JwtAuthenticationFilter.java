@@ -1,6 +1,7 @@
 package com.haui.UrbanMart.security;
 
 import com.haui.UrbanMart.entity.User;
+import com.haui.UrbanMart.entity.UserStatus;
 import com.haui.UrbanMart.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -36,7 +37,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (SecurityContextHolder.getContext().getAuthentication() == null) {
                     User user = userRepository.findById(userId).orElse(null);
 
-                    if (user != null) {
+                    if (user != null
+                            && user.getStatus() == UserStatus.ACTIVE
+                            && (user.getLockedUntil() == null
+                            || !user.getLockedUntil().isAfter(java.time.OffsetDateTime.now()))) {
                         CustomUserDetails userDetails = new CustomUserDetails(user);
                         var authToken = new UsernamePasswordAuthenticationToken(
                                 userDetails, null, userDetails.getAuthorities());

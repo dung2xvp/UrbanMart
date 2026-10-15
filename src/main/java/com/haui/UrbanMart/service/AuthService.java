@@ -4,6 +4,7 @@ import com.haui.UrbanMart.dto.request.*;
 import com.haui.UrbanMart.dto.response.LoginResponse;
 import com.haui.UrbanMart.dto.response.UserResponse;
 import com.haui.UrbanMart.entity.User;
+import com.haui.UrbanMart.entity.UserStatus;
 import com.haui.UrbanMart.exception.BadRequestException;
 import com.haui.UrbanMart.exception.ConflictException;
 import com.haui.UrbanMart.exception.ResourceNotFoundException;
@@ -101,6 +102,10 @@ public class AuthService {
         User user = userRepository.findByPhone(request.getPhone())
                 .orElseThrow(() ->
                         new BadRequestException("Thông tin đăng nhập không hợp lệ"));
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BadRequestException("Tài khoản đã bị khóa");
+        }
 
         OffsetDateTime now = OffsetDateTime.now();
 

@@ -56,7 +56,9 @@ public class ProductService {
                 productRepository.nextSkuValue()
         ));
         applyProductRequest(product, request);
-        return ProductAdminResponse.from(productRepository.save(product));
+        Product savedProduct = productRepository.save(product);
+        branchInventoryRepository.insertZeroStockForAllBranches(savedProduct.getId());
+        return ProductAdminResponse.from(savedProduct);
     }
 
     @Transactional

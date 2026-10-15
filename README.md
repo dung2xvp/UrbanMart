@@ -43,7 +43,7 @@ Các file migration nằm trong `db/migrations/`, đặt tên `V1`, `V2`... và 
 **Trên macOS/Linux:**
 ```bash
 cd db/migrations
-for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql V8__product_sku_sequence.sql; do
+for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql V8__product_sku_sequence.sql V9__orders_payments_and_promotions.sql V10__inventory_reservations_and_movements.sql V11__backfill_branch_inventory_products.sql V12__branch_inventory_expiry_lots.sql V13__order_handover_confirmation.sql; do
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1 < "$f" || break
 done
 ```
@@ -51,7 +51,7 @@ done
 **Trên Windows (PowerShell)** — `<` không dùng được như Linux, phải dùng `Get-Content`:
 ```powershell
 cd db\migrations
-$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql","V8__product_sku_sequence.sql"
+$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql","V8__product_sku_sequence.sql","V9__orders_payments_and_promotions.sql","V10__inventory_reservations_and_movements.sql","V11__backfill_branch_inventory_products.sql","V12__branch_inventory_expiry_lots.sql","V13__order_handover_confirmation.sql"
 foreach ($f in $files) {
     Get-Content -Raw $f | docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
     if ($LASTEXITCODE -ne 0) { break }
@@ -87,7 +87,7 @@ Kiểm tra các bảng:
 docker exec -it urbanmart-db psql -U urbanmart_user -d urbanmart -c "\dt"
 ```
 
-Các bảng chính gồm: `users`, `addresses`, `branches`, `categories`, `brands`, `products`, `branch_inventory`, `wishlists`, `carts`, `cart_items`, `product_discounts`.
+Các bảng chính gồm: `users`, `addresses`, `branches`, `categories`, `brands`, `products`, `branch_inventory`, `inventory_movements`, `wishlists`, `carts`, `cart_items`, `product_discounts`, `orders`, `order_items`, `payments`, `promotions`, `order_promotions`, `promotion_user_usage`.
 
 Migration `V5` thêm ràng buộc để mỗi user chỉ có một giỏ hàng trên mỗi chi nhánh và mỗi sản phẩm chỉ xuất hiện một lần trong cùng giỏ hàng. Nếu database đã có dữ liệu trùng, cần xử lý các bản ghi đó trước khi chạy migration.
 
@@ -97,18 +97,31 @@ Migration `V7` thêm cột `products.is_daily_fresh`, mặc định `false`, đ�
 
 Migration `V8` tạo sequence `product_sku_seq` dùng để sinh SKU tự động khi tạo sản phẩm và khởi tạo sequence tiếp nối mã SKU `SP...` hiện có.
 
-Nếu database đã chạy V1–V6, chạy V7 và V8 trước khi dùng code mới:
+Migration `V9` tạo schema đơn hàng, chi tiết đơn, payment attempts và voucher/redemption. Migration `V10` bổ sung số lượng giữ/ngưỡng tồn thấp và sổ lịch sử biến động tồn kho. Migration `V13` bổ sung trạng thái chờ khách xác nhận đã nhận hàng và thời điểm bàn giao. Chỉ chạy V9/V10 sau khi database đã áp dụng V1–V8; nếu đã có migration lịch sử riêng cho các bảng này, cần đối chiếu schema thực tế trước khi áp dụng.
+
+Nếu database đã chạy đến V12, áp dụng V13 trước khi khởi động phiên bản code này:
+
+```powershell
+Get-Content -Raw .\db\migrations\V13__order_handover_confirmation.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+```
+
+Nếu database đã chạy V1–V6, chạy các migration V7–V10 trước khi dùng code mới:
 
 ```powershell
 Get-Content -Raw .\db\migrations\V7__daily_fresh_products.sql |
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
 Get-Content -Raw .\db\migrations\V8__product_sku_sequence.sql |
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+Get-Content -Raw .\db\migrations\V9__orders_payments_and_promotions.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+Get-Content -Raw .\db\migrations\V10__inventory_reservations_and_movements.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
 ```
 
 ## Bước 3.1 — Nạp dữ liệu mẫu (không bắt buộc)
 
-Chạy sau khi đã áp dụng migration V1–V8. Seed mẫu tạo hai tài khoản `BRANCH` (gắn lần lượt với chi nhánh Hà Đông và Cầu Giấy), chi nhánh, danh mục, thương hiệu, sản phẩm, tồn kho, nhóm sản phẩm hàng ngày và các đợt giảm giá đang hiệu lực/sắp diễn ra/đã kết thúc. Chỉ chạy một lần trên database trống vì các mã SKU và tên chi nhánh là duy nhất.
+Chạy sau khi đã áp dụng migration V1–V10. Seed mẫu tạo hai tài khoản `BRANCH` (gắn lần lượt với chi nhánh Hà Đông và Cầu Giấy), chi nhánh, danh mục, thương hiệu, sản phẩm, tồn kho, nhóm sản phẩm hàng ngày và các đợt giảm giá đang hiệu lực/sắp diễn ra/đã kết thúc. Chỉ chạy một lần trên database trống vì các mã SKU và tên chi nhánh là duy nhất.
 
 Tài khoản đăng nhập mẫu chỉ dùng cho dev/local:
 
@@ -314,11 +327,99 @@ Admin chỉ có quyền xem tồn kho; tài khoản role `BRANCH` chỉ xem và 
 ```http
 GET /api/admin/branches/inventory/summary
 GET /api/admin/branches/{branchId}/inventory/by-categories
+GET /api/admin/branches/{branchId}/inventory/summary
+GET /api/admin/branches/{branchId}/inventory/categories
+GET /api/admin/inventory/by-branch?branchId={branchId}&categoryId={categoryId}&keyword={keyword}&page=0&size=20
 GET /api/branches/{branchId}/inventory/by-categories
+GET /api/branches/{branchId}/inventory/summary
+GET /api/branches/{branchId}/inventory/categories
+GET /api/branch/inventory/summary?branchId={branchId}
+GET /api/branch/inventory/categories?branchId={branchId}
+GET /api/branches/{branchId}/inventory/{productId}/lots
+POST /api/branches/{branchId}/inventory/lots
+PATCH /api/branches/{branchId}/inventory/lots/{lotId}
 PUT /api/branches/{branchId}/inventory
 ```
 
-API `PUT` nhận `productId` và `stockQuantity`. API tồn kho theo danh mục trả thông tin chi nhánh, tổng số lượng tồn và danh sách danh mục/nhóm danh mục cùng các sản phẩm có bản ghi tồn kho.
+API `PUT` nhận `productId`, `stockQuantity` (số tồn mới, bắt buộc thấp hơn tồn hiện tại) và `reason` (`EXPIRED` hoặc `DAMAGED`). Không thể giảm tồn thấp hơn số lượng đang được giữ; các lần giảm được ghi vào lịch sử biến động cùng lý do. API không dùng để nhập/tăng tồn.
+
+Summary chi nhánh trả số SKU, tồn thực tế, tồn khả dụng, tồn đang giữ, số SKU sắp hết (theo `min_stock_level`), hết hàng và SKU có lô hết hạn trong vòng 7 ngày. Báo cáo danh mục tổng hợp các chỉ số tồn kho theo danh mục cấp 1 và cấp 2. Admin tra cứu tồn kho theo chi nhánh có lọc danh mục, từ khóa tên/SKU và phân trang.
+
+Các lô được nhập qua `POST /api/branches/{branchId}/inventory/lots` với `productId`, `quantity` và `expiryDate` (ISO `YYYY-MM-DD`, có thể bỏ trống với hàng không có hạn sử dụng); tồn tổng và lịch sử nhập kho được cập nhật đồng thời. API `GET .../{productId}/lots` trả các lô hiện có; `PATCH .../lots/{lotId}` gán/cập nhật ngày hết hạn của lô cũ chưa có ngày. Hàng xuất/giảm được trừ vào các lô theo hạn dùng gần nhất. Dữ liệu tồn cũ được migration V12 đưa vào lô không có ngày hết hạn; cần cập nhật hạn dùng của các lô này để chỉ số sắp hết hạn chính xác.
+
+Khi tạo sản phẩm hoặc chi nhánh, hệ thống tạo liên kết tồn kho với số lượng ban đầu bằng 0. Migration V11 bổ sung các liên kết còn thiếu cho dữ liệu hiện có; V12 tạo lô không có ngày hết hạn cho tồn kho cũ.
+
+### API đơn hàng của khách hàng
+
+Khách hàng có thể xem lịch sử đơn hàng theo trang và xem chi tiết một đơn của chính mình:
+
+```http
+GET   /api/orders?page=0&size=20&group=ALL
+GET   /api/orders/{orderId}
+PATCH /api/orders/{orderId}/confirm-received
+POST  /api/orders/quote
+POST  /api/orders
+```
+
+Checkout chấp nhận `promotionCode` tùy chọn và chỉ nhận `receiveFrom`/`receiveTo` cho đơn `PICKUP`. Hai thời điểm phải cùng được truyền hoặc cùng bỏ trống; nếu có thì phải nằm trong tương lai và thời gian kết thúc sau thời gian bắt đầu. Đây là giờ khách dự kiến đến nhận, không phải slot được giữ chỗ; bỏ trống nghĩa là nhận sớm nhất. Đơn `DELIVERY` không nhận giờ giao do khách chọn.
+
+Có thể gọi `POST /api/orders/quote` trước khi đặt để kiểm tra voucher và xem `subtotal`, `discountAmount`, `totalAmount`; API báo giá không giữ lượt voucher. Khi `POST /api/orders`, backend tính lại giá và kiểm tra/ghi nhận lượt voucher nguyên tử trong giao dịch tạo đơn, nên tổng tiền từ báo giá chỉ mang tính tham khảo. Mỗi đơn chỉ áp dụng một voucher. Voucher được hoàn lại lượt nếu chi nhánh hủy đơn trước khi giao/khách đến nhận.
+
+Ví dụ request báo giá:
+
+```json
+{
+  "branchId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "promotionCode": "WELCOME10"
+}
+```
+
+Ví dụ request tạo đơn tự lấy có voucher và khung giờ dự kiến:
+
+```json
+{
+  "clientRequestId": "4c5b4df4-f213-4c5a-90fb-81ab8e55d813",
+  "branchId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "deliveryType": "PICKUP",
+  "promotionCode": "WELCOME10",
+  "receiveFrom": "2026-10-16T10:00:00+07:00",
+  "receiveTo": "2026-10-16T11:00:00+07:00",
+  "recipientName": "Nguyen Van A",
+  "recipientPhone": "0987654321",
+  "note": "Gọi trước khi đến"
+}
+```
+
+Danh sách sắp xếp đơn mới nhất trước và trả về `content`, `page`, `size`, `totalElements`, `totalPages`. `group` không bắt buộc, mặc định là `ALL`; các giá trị hỗ trợ:
+
+| `group` | Các trạng thái |
+|---|---|
+| `ALL` | Tất cả trạng thái |
+| `PENDING` | Chờ xác nhận |
+| `PROCESSING` | Đang chuẩn bị hàng |
+| `WAITING` | `SHIPPING`, `READY_FOR_PICKUP`, `DELIVERY_FAILED` (đơn giao thất bại có thể được giao lại) |
+| `COMPLETED` | `DELIVERED_PENDING_CONFIRMATION`, `COMPLETED` (hiển thị Đã giao / Đã nhận hàng) |
+| `CANCELLED` | Đã hủy |
+| `RETURNED` | Trả hàng |
+
+Chi tiết trả về trạng thái, chi nhánh, thanh toán, tổng tiền, mặt hàng, `deliveredAt` và `completedAt`. Cả ba endpoint chỉ dùng role `CUSTOMER`; API chi tiết và xác nhận nhận hàng chỉ thao tác trên đơn của khách đang đăng nhập. Khách chỉ xác nhận được khi đơn ở trạng thái `DELIVERED_PENDING_CONFIRMATION`.
+
+### Vòng đời đơn hàng
+
+Nhân viên chi nhánh chỉ thao tác trên đơn thuộc chi nhánh được gán cho tài khoản của mình. Danh sách có thể lọc bằng `status` (giá trị `OrderStatus`) và phân trang:
+
+```http
+GET   /api/branches/{branchId}/orders?status=PENDING&page=0&size=20
+GET   /api/branches/{branchId}/orders/{orderId}
+PATCH /api/branches/{branchId}/orders/{orderId}/confirm
+PATCH /api/branches/{branchId}/orders/{orderId}/cancel
+PATCH /api/branches/{branchId}/orders/{orderId}/preparation-complete
+PATCH /api/branches/{branchId}/orders/{orderId}/handover
+PATCH /api/branches/{branchId}/orders/{orderId}/delivery-failed
+PATCH /api/branches/{branchId}/orders/{orderId}/retry-delivery
+```
+
+Luồng giao tận nơi: `PENDING` → `PROCESSING` → `SHIPPING` → `DELIVERED_PENDING_CONFIRMATION` → `COMPLETED`. Luồng khách tự lấy: `PENDING` → `PROCESSING` → `READY_FOR_PICKUP` → `DELIVERED_PENDING_CONFIRMATION` → `COMPLETED`. Nhân viên xác nhận bàn giao bằng `handover` sau khi giao thành công hoặc khách đã nhận hàng tại chi nhánh; việc này ghi `deliveredAt`. Khách có thể xác nhận nhận hàng bằng endpoint riêng. Nếu khách không xác nhận, hệ thống tự chuyển sang `COMPLETED` sau 72 giờ từ `deliveredAt` (tác vụ kiểm tra chạy mỗi phút). Đơn giao thất bại được ghi lý do và có thể chuyển lại sang `SHIPPING`; trạng thái này chưa khởi động thời hạn tự hoàn tất.
 
 Sản phẩm đã ngừng kinh doanh có thể được khôi phục riêng, không cần mở quyền sửa `status` trong request cập nhật thông tin sản phẩm:
 
@@ -327,6 +428,33 @@ PATCH /api/admin/products/{productId}/restore
 ```
 
 Endpoint này chuyển trạng thái sản phẩm về `ACTIVE`; endpoint `DELETE /api/admin/products/{productId}` vẫn chuyển sang `DISCONTINUED`.
+
+### Quản lý tài khoản (admin)
+
+Các endpoint dưới đây chỉ dành cho tài khoản `ADMIN`. API danh sách hỗ trợ lọc theo từ khóa (họ tên, số điện thoại, email), vai trò, trạng thái và phân trang:
+
+```http
+GET    /api/admin/users?keyword={keyword}&role={CUSTOMER|BRANCH|ADMIN}&status={ACTIVE|LOCKED}&page=0&size=20
+GET    /api/admin/users/{userId}
+POST   /api/admin/users
+PUT    /api/admin/users/{userId}
+DELETE /api/admin/users/{userId}
+```
+
+Tạo tài khoản yêu cầu `fullName`, `phone`, `password` và `role`; `email`, `birthDate`, `gender` là tùy chọn. Tài khoản `BRANCH` phải có `branchId` và mỗi chi nhánh chỉ được gán một tài khoản. Khi cập nhật, truyền đầy đủ `fullName`, `phone`, `role`, `status`; `password` không bắt buộc và nếu bỏ trống sẽ giữ nguyên. `DELETE` khóa tài khoản (`LOCKED`) thay vì xóa vật lý, đồng thời gỡ liên kết chi nhánh nếu có để giữ nguyên lịch sử đơn hàng. Không thể tự khóa/hạ quyền hoặc khóa tài khoản admin cuối cùng.
+
+Ví dụ tạo tài khoản nhân viên chi nhánh:
+
+```json
+{
+  "fullName": "Nguyễn Văn A",
+  "phone": "0987654321",
+  "email": "a@example.com",
+  "password": "matkhau123",
+  "role": "BRANCH",
+  "branchId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+}
+```
 
 ```json
 {
@@ -353,7 +481,12 @@ UrbanMart/
 │   │   ├── V5__cart_uniqueness_constraints.sql
 │   │   ├── V6__product_discounts.sql
 │   │   ├── V7__daily_fresh_products.sql
-│   │   └── V8__product_sku_sequence.sql
+│   │   ├── V8__product_sku_sequence.sql
+│   │   ├── V9__orders_payments_and_promotions.sql
+│   │   ├── V10__inventory_reservations_and_movements.sql
+│   │   ├── V11__backfill_branch_inventory_products.sql
+│   │   ├── V12__branch_inventory_expiry_lots.sql
+│   │   └── V13__order_handover_confirmation.sql
 │   └── seed/
 │   │   └── seed-sample-data.sql
 └── src/main/

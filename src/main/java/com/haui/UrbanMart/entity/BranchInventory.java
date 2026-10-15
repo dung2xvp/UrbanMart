@@ -32,6 +32,12 @@ public class BranchInventory {
     @Column(name = "stock_quantity", nullable = false)
     private int stockQuantity = 0;
 
+    @Column(name = "reserved_quantity", nullable = false)
+    private int reservedQuantity = 0;
+
+    @Column(name = "min_stock_level", nullable = false)
+    private int minStockLevel = 10;
+
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;

@@ -12,15 +12,19 @@ import com.haui.UrbanMart.exception.ConflictException;
 import com.haui.UrbanMart.exception.ResourceNotFoundException;
 import com.haui.UrbanMart.repository.BranchRepository;
 import com.haui.UrbanMart.repository.UserRepository;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -39,12 +43,26 @@ public class AdminUserService {
             UserStatus status,
             Pageable pageable
     ) {
-        Page<User> users = userRepository.searchUsers(
-                normalizeKeyword(keyword),
-                role,
-                status,
-                pageable
-        );
+        String normalizedKeyword = normalizeKeyword(keyword);
+        Specification<User> specification = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (!normalizedKeyword.isEmpty()) {
+                String pattern = "%" + normalizedKeyword.toLowerCase(Locale.ROOT) + "%";
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("fullName")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("phone")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("email")), pattern)
+                ));
+            }
+            if (role != null) {
+                predicates.add(criteriaBuilder.equal(root.get("role"), role));
+            }
+            if (status != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            }
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
+        Page<User> users = userRepository.findAll(specification, pageable);
         Map<UUID, Branch> branchesByAccountId = getBranchesByAccountId(users.getContent());
         return users.map(user -> toResponse(user, branchesByAccountId.get(user.getId())));
     }

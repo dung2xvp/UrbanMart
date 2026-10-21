@@ -7,6 +7,7 @@ import com.haui.UrbanMart.entity.UserRole;
 import com.haui.UrbanMart.entity.UserStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -15,23 +16,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.haui.UrbanMart.entity.User;
 
-public interface UserRepository extends JpaRepository <User, UUID> {
-    @Query("""
-            SELECT user
-            FROM User user
-            WHERE (:keyword = ''
-                   OR LOWER(user.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                   OR LOWER(user.phone) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                   OR LOWER(user.email) LIKE LOWER(CONCAT('%', :keyword, '%')))
-              AND (:role IS NULL OR user.role = :role)
-              AND (:status IS NULL OR user.status = :status)
-            """)
-    Page<User> searchUsers(
-            @Param("keyword") String keyword,
-            @Param("role") UserRole role,
-            @Param("status") UserStatus status,
-            Pageable pageable
-    );
+public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

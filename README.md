@@ -43,7 +43,7 @@ Các file migration nằm trong `db/migrations/`, đặt tên `V1`, `V2`... và 
 **Trên macOS/Linux:**
 ```bash
 cd db/migrations
-for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql V8__product_sku_sequence.sql V9__orders_payments_and_promotions.sql V10__inventory_reservations_and_movements.sql V11__backfill_branch_inventory_products.sql V12__branch_inventory_expiry_lots.sql V13__order_handover_confirmation.sql; do
+for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql V8__product_sku_sequence.sql V9__orders_payments_and_promotions.sql V10__inventory_reservations_and_movements.sql V11__backfill_branch_inventory_products.sql V12__branch_inventory_expiry_lots.sql V13__order_handover_confirmation.sql V14__voucher_details_and_conditions.sql; do
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1 < "$f" || break
 done
 ```
@@ -51,7 +51,7 @@ done
 **Trên Windows (PowerShell)** — `<` không dùng được như Linux, phải dùng `Get-Content`:
 ```powershell
 cd db\migrations
-$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql","V8__product_sku_sequence.sql","V9__orders_payments_and_promotions.sql","V10__inventory_reservations_and_movements.sql","V11__backfill_branch_inventory_products.sql","V12__branch_inventory_expiry_lots.sql","V13__order_handover_confirmation.sql"
+$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql","V8__product_sku_sequence.sql","V9__orders_payments_and_promotions.sql","V10__inventory_reservations_and_movements.sql","V11__backfill_branch_inventory_products.sql","V12__branch_inventory_expiry_lots.sql","V13__order_handover_confirmation.sql","V14__voucher_details_and_conditions.sql"
 foreach ($f in $files) {
     Get-Content -Raw $f | docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
     if ($LASTEXITCODE -ne 0) { break }
@@ -98,11 +98,19 @@ Migration `V7` thêm cột `products.is_daily_fresh`, mặc định `false`, đ�
 Migration `V8` tạo sequence `product_sku_seq` dùng để sinh SKU tự động khi tạo sản phẩm và khởi tạo sequence tiếp nối mã SKU `SP...` hiện có.
 
 Migration `V9` tạo schema đơn hàng, chi tiết đơn, payment attempts và voucher/redemption. Migration `V10` bổ sung số lượng giữ/ngưỡng tồn thấp và sổ lịch sử biến động tồn kho. Migration `V13` bổ sung trạng thái chờ khách xác nhận đã nhận hàng và thời điểm bàn giao. Chỉ chạy V9/V10 sau khi database đã áp dụng V1–V8; nếu đã có migration lịch sử riêng cho các bảng này, cần đối chiếu schema thực tế trước khi áp dụng.
+Migration `V14` bổ sung tiêu đề, mô tả và điều kiện danh mục/đơn đầu tiên/ngày đặc biệt cho voucher.
 
 Nếu database đã chạy đến V12, áp dụng V13 trước khi khởi động phiên bản code này:
 
 ```powershell
 Get-Content -Raw .\db\migrations\V13__order_handover_confirmation.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+```
+
+Nếu database đã chạy đến V13, áp dụng V14 trước khi khởi động phiên bản code này:
+
+```powershell
+Get-Content -Raw .\db\migrations\V14__voucher_details_and_conditions.sql |
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
 ```
 
@@ -247,7 +255,7 @@ Test nhanh xác nhận chạy đúng:
 curl http://localhost:8080/api/health
 ```
 
-## API hiện có và tuần 4
+## API hiện có (tuần 4–7)
 
 | Nhóm API | Endpoint / chức năng | Trạng thái |
 |---|---|---|
@@ -258,9 +266,14 @@ curl http://localhost:8080/api/health
 | Chi nhánh gần khách | `/api/branches/nearby` | ✅ Đã code |
 | Danh mục và thương hiệu | `/api/categories`, `/api/brands` | ✅ Đã code |
 | Sản phẩm theo chi nhánh | `/api/products`, `/api/products/{productId}` | ✅ Có phân trang, tìm kiếm, lọc và sắp xếp |
+| Gợi ý tìm kiếm sản phẩm | `/api/products/search-suggestions` | ✅ Tìm theo tên hoặc SKU, trả tối đa 3 sản phẩm mặc định |
 | Sản phẩm theo danh mục | `/api/products/category/{categoryId}` | ✅ Có thể lấy sản phẩm thuộc danh mục con |
+| Sản phẩm theo danh mục (admin) | `/api/admin/products/category/{categoryId}` | ✅ Có phân trang, chỉ lấy danh mục được yêu cầu |
 | Sản phẩm đang giảm giá | `/api/products/promotions` | ✅ Chỉ trả các đợt giảm đang hiệu lực |
 | Sản phẩm hàng ngày | `/api/products/daily-fresh` | ✅ Lọc theo cờ `is_daily_fresh` |
+| Danh sách/chi tiết voucher | `/api/vouchers`, `/api/vouchers/{id}` | ✅ Public; danh sách có phân trang và lọc |
+| Áp dụng thử voucher | `/api/vouchers/apply` | ✅ CUSTOMER; tính theo giỏ và giá hiện tại |
+| Quản lý voucher (admin) | `/api/admin/vouchers` | ✅ Tạo, cập nhật, vô hiệu hóa và lọc |
 | CRUD đợt giảm giá (admin) | `/api/admin/product-discounts` | ✅ Chỉ role `ADMIN` |
 | Sản phẩm bán chạy | Chưa triển khai | ⏳ Chưa làm theo phạm vi hiện tại |
 | Yêu thích sản phẩm | `/api/wishlists` | ✅ Đã code |
@@ -272,10 +285,30 @@ Các API danh sách sản phẩm cần `branchId`; phân trang dùng `page` bắ
 
 ```http
 GET /api/products?branchId={branchId}&page=0&size=20
+GET /api/products/search-suggestions?keyword={keyword}&branchId={branchId}&limit=3
 GET /api/products/category/{categoryId}?branchId={branchId}&includeDescendants=true&page=0&size=20
 GET /api/products/promotions?branchId={branchId}&page=0&size=20
 GET /api/products/daily-fresh?branchId={branchId}&page=0&size=20
 ```
+
+API gợi ý tìm kiếm yêu cầu `keyword` và `branchId`, `limit` mặc định là `3` và chấp nhận từ `1` đến `10`. Kết quả chỉ gồm sản phẩm đang kinh doanh tại chi nhánh, cùng tên, ảnh, giá gốc, giá hiện tại, đơn vị và tên danh mục.
+
+### Voucher
+
+```http
+GET    /api/vouchers?keyword={keyword}&isAvailableOnly=true&page=0&size=10
+GET    /api/vouchers/{voucherId}
+POST   /api/vouchers/apply
+GET    /api/admin/vouchers?keyword={keyword}&isActive=true&page=0&size=20
+GET    /api/admin/vouchers/{voucherId}
+POST   /api/admin/vouchers
+PUT    /api/admin/vouchers/{voucherId}
+DELETE /api/admin/vouchers/{voucherId}
+```
+
+Request tạo/cập nhật nhận `code`, `title`, `description`, `discountType` (`FIXED` hoặc `PERCENT`), `discountValue`, `maxDiscountAmount`, `minOrderAmount`, `startDate`, `endDate`, `branchId` (tùy chọn), `usageLimit`, `userLimit`, `isActive` và `conditions`. Trong `conditions`, có thể truyền `isFirstOrder`, `applicableCategoryIds` và `specialDaysOfMonth`. Voucher xóa mềm bằng cách chuyển sang không hoạt động để giữ lịch sử đơn hàng.
+
+`POST /api/vouchers/apply` nhận `{ "code": "...", "branchId": "..." }`; backend lấy giỏ hàng và giá hiện tại, không nhận subtotal từ client. API chỉ báo giá, không giữ lượt sử dụng. Khi tạo đơn, voucher được kiểm tra lại và lượt dùng được ghi nhận trong cùng transaction. Giá sale áp dụng cho toàn bộ số lượng; voucher tính tiếp trên giá sau sale. Với voucher giới hạn danh mục, khoản giảm chỉ tính trên sản phẩm thuộc danh mục được chọn và các danh mục con; ngưỡng đơn tối thiểu vẫn so với tổng tiền hàng sau sale, trước voucher. Ngày đặc biệt được tính theo múi giờ Việt Nam.
 
 Danh sách chung, theo danh mục, khuyến mãi và hàng ngày hỗ trợ:
 
@@ -429,6 +462,12 @@ PATCH /api/admin/products/{productId}/restore
 
 Endpoint này chuyển trạng thái sản phẩm về `ACTIVE`; endpoint `DELETE /api/admin/products/{productId}` vẫn chuyển sang `DISCONTINUED`.
 
+Danh sách sản phẩm quản trị có thể lọc theo một danh mục cụ thể và phân trang:
+
+```http
+GET /api/admin/products/category/{categoryId}?page=0&size=20
+```
+
 ### Quản lý tài khoản (admin)
 
 Các endpoint dưới đây chỉ dành cho tài khoản `ADMIN`. API danh sách hỗ trợ lọc theo từ khóa (họ tên, số điện thoại, email), vai trò, trạng thái và phân trang:
@@ -486,7 +525,8 @@ UrbanMart/
 │   │   ├── V10__inventory_reservations_and_movements.sql
 │   │   ├── V11__backfill_branch_inventory_products.sql
 │   │   ├── V12__branch_inventory_expiry_lots.sql
-│   │   └── V13__order_handover_confirmation.sql
+│   │   ├── V13__order_handover_confirmation.sql
+│   │   └── V14__voucher_details_and_conditions.sql
 │   └── seed/
 │   │   └── seed-sample-data.sql
 └── src/main/

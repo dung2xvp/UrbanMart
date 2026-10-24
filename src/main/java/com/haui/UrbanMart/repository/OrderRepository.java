@@ -36,6 +36,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
             UUID clientRequestId
     );
 
+    boolean existsByCustomer_IdAndStatus(UUID customerId, OrderStatus status);
+
     @EntityGraph(attributePaths = {"branch"})
     Optional<Order> findByIdAndBranch_Id(UUID orderId, UUID branchId);
 

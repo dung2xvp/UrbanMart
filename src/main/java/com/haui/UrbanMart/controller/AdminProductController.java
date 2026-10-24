@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -43,6 +44,25 @@ public class AdminProductController {
         return ApiResponse.success(
                 "Lấy danh sách sản phẩm thành công",
                 productService.getAdminProducts(PageRequest.of(page, size))
+        );
+    }
+
+    @GetMapping("/category/{categoryId}")
+    public ApiResponse<Page<ProductAdminResponse>> getProductsByCategory(
+            @PathVariable UUID categoryId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        if (page < 0 || size < 1 || size > 100) {
+            throw new BadRequestException("Page hoặc size không hợp lệ");
+        }
+
+        return ApiResponse.success(
+                "Lấy danh sách sản phẩm theo danh mục thành công",
+                productService.getAdminProductsByCategory(
+                        categoryId,
+                        PageRequest.of(page, size, Sort.by("name").ascending())
+                )
         );
     }
 

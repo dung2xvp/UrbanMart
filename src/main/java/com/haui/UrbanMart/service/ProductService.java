@@ -3,6 +3,7 @@ package com.haui.UrbanMart.service;
 import com.haui.UrbanMart.dto.request.ProductWriteRequest;
 import com.haui.UrbanMart.dto.response.ProductAdminResponse;
 import com.haui.UrbanMart.dto.response.ProductResponse;
+import com.haui.UrbanMart.dto.response.ProductSuggestionResponse;
 import com.haui.UrbanMart.entity.*;
 import com.haui.UrbanMart.exception.ResourceNotFoundException;
 import com.haui.UrbanMart.repository.BranchInventoryRepository;
@@ -13,6 +14,7 @@ import com.haui.UrbanMart.repository.ProductListSort;
 import com.haui.UrbanMart.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +40,38 @@ public class ProductService {
     public Page<ProductAdminResponse> getAdminProducts(Pageable pageable) {
         return productRepository.findAll(pageable)
                 .map(ProductAdminResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductAdminResponse> getAdminProductsByCategory(
+            UUID categoryId,
+            Pageable pageable
+    ) {
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new ResourceNotFoundException("Không tìm thấy danh mục");
+        }
+        return productRepository.findByCategory_Id(categoryId, pageable)
+                .map(ProductAdminResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProductSuggestionResponse> getProductSearchSuggestions(
+            UUID branchId,
+            String keyword,
+            int limit
+    ) {
+        return getProducts(
+                branchId,
+                keyword,
+                null,
+                false,
+                null,
+                null,
+                null,
+                null,
+                ProductListSort.NAME_ASC,
+                PageRequest.of(0, limit)
+        ).map(ProductSuggestionResponse::from).getContent();
     }
 
     @Transactional(readOnly = true)

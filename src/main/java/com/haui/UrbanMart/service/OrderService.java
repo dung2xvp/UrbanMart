@@ -104,13 +104,15 @@ public class OrderService {
         Cart cart = cartRepository.findByUserIdAndBranchId(customerId, branch.getId())
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy giỏ hàng"));
         List<CartItem> cartItems = cartItemRepository.findAllByCartId(cart.getId());
-        BigDecimal subtotal = calculateCartSubtotal(cartItems);
+        CartPricing cartPricing = calculateCartPricing(cartItems);
+        BigDecimal subtotal = cartPricing.subtotal();
         PromotionService.PromotionDiscount promotionDiscount =
                 promotionService.calculateDiscount(
                         branch.getId(),
                         customerId,
                         request.promotionCode(),
                         subtotal,
+                        cartPricing.categorySubtotals(),
                         false
                 );
         BigDecimal shippingFee = BigDecimal.ZERO.setScale(2);
@@ -226,6 +228,7 @@ public class OrderService {
                 productPricingService.getCurrentPrices(products);
 
         BigDecimal subtotal = BigDecimal.ZERO;
+        Map<UUID, BigDecimal> categorySubtotals = new HashMap<>();
         List<OrderItem> orderItems = new ArrayList<>();
 
         Order order = new Order();
@@ -287,6 +290,13 @@ public class OrderService {
 
             orderItems.add(orderItem);
             subtotal = subtotal.add(lineTotal);
+            if (product.getCategory() != null) {
+                categorySubtotals.merge(
+                        product.getCategory().getId(),
+                        lineTotal,
+                        BigDecimal::add
+                );
+            }
         }
 
         order.setSubtotal(subtotal);
@@ -297,6 +307,7 @@ public class OrderService {
                         customerId,
                         request.getPromotionCode(),
                         subtotal,
+                        categorySubtotals,
                         true
                 );
         order.setDiscountAmount(promotionDiscount.amount());
@@ -507,7 +518,7 @@ public class OrderService {
         }
     }
 
-    private BigDecimal calculateCartSubtotal(List<CartItem> cartItems) {
+    private CartPricing calculateCartPricing(List<CartItem> cartItems) {
         if (cartItems.isEmpty()) {
             throw new BadRequestException("Giỏ hàng đang trống");
         }
@@ -516,6 +527,7 @@ public class OrderService {
                 .toList();
         Map<UUID, ProductPrice> prices = productPricingService.getCurrentPrices(products);
         BigDecimal subtotal = BigDecimal.ZERO;
+        Map<UUID, BigDecimal> categorySubtotals = new HashMap<>();
         for (CartItem cartItem : cartItems) {
             Product product = cartItem.getProduct();
             if (cartItem.getQuantity() <= 0) {
@@ -534,10 +546,24 @@ public class OrderService {
                         "Không tính được giá cho sản phẩm: " + product.getId()
                 );
             }
-            subtotal = subtotal.add(price.price()
-                    .multiply(BigDecimal.valueOf(cartItem.getQuantity())));
+            BigDecimal lineTotal = price.price()
+                    .multiply(BigDecimal.valueOf(cartItem.getQuantity()));
+            subtotal = subtotal.add(lineTotal);
+            if (product.getCategory() != null) {
+                categorySubtotals.merge(
+                        product.getCategory().getId(),
+                        lineTotal,
+                        BigDecimal::add
+                );
+            }
         }
-        return subtotal;
+        return new CartPricing(subtotal, categorySubtotals);
+    }
+
+    private record CartPricing(
+            BigDecimal subtotal,
+            Map<UUID, BigDecimal> categorySubtotals
+    ) {
     }
 
     private OrderDetailResponse toCustomerOrderDetail(

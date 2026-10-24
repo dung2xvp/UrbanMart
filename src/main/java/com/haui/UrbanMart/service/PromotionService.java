@@ -3,6 +3,7 @@ package com.haui.UrbanMart.service;
 import com.haui.UrbanMart.entity.Order;
 import com.haui.UrbanMart.entity.OrderPromotion;
 import com.haui.UrbanMart.entity.OrderPromotionStatus;
+import com.haui.UrbanMart.entity.OrderStatus;
 import com.haui.UrbanMart.entity.Promotion;
 import com.haui.UrbanMart.entity.PromotionType;
 import com.haui.UrbanMart.entity.User;
@@ -10,6 +11,8 @@ import com.haui.UrbanMart.entity.PromotionUserUsageId;
 import com.haui.UrbanMart.exception.BadRequestException;
 import com.haui.UrbanMart.exception.ConflictException;
 import com.haui.UrbanMart.repository.OrderPromotionRepository;
+import com.haui.UrbanMart.repository.OrderRepository;
+import com.haui.UrbanMart.repository.CategoryRepository;
 import com.haui.UrbanMart.repository.PromotionRepository;
 import com.haui.UrbanMart.repository.PromotionUserUsageRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,8 +22,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -29,6 +36,11 @@ public class PromotionService {
     private final PromotionRepository promotionRepository;
     private final PromotionUserUsageRepository promotionUserUsageRepository;
     private final OrderPromotionRepository orderPromotionRepository;
+    private final OrderRepository orderRepository;
+    private final CategoryRepository categoryRepository;
+
+    private static final ZoneId BUSINESS_TIME_ZONE =
+            ZoneId.of("Asia/Ho_Chi_Minh");
 
     @Transactional
     public PromotionDiscount calculateDiscount(
@@ -36,6 +48,7 @@ public class PromotionService {
             UUID customerId,
             String code,
             BigDecimal subtotal,
+            Map<UUID, BigDecimal> categorySubtotals,
             boolean reserveUsage
     ) {
         if (code == null || code.isBlank()) {
@@ -49,7 +62,12 @@ public class PromotionService {
                 .orElseThrow(() -> new BadRequestException("Mã voucher không hợp lệ"));
 
         validatePromotion(promotion, branchId, customerId, subtotal);
-        BigDecimal discount = calculateAmount(promotion, subtotal);
+        BigDecimal qualifyingSubtotal = getQualifyingSubtotal(
+                promotion,
+                subtotal,
+                categorySubtotals
+        );
+        BigDecimal discount = calculateAmount(promotion, qualifyingSubtotal);
 
         if (reserveUsage) {
             if (promotion.getUsageLimit() != null
@@ -152,6 +170,50 @@ public class PromotionService {
         if (getCustomerUsage(promotion.getId(), customerId) >= promotion.getPerUserLimit()) {
             throw new BadRequestException("Bạn đã sử dụng hết lượt của voucher này");
         }
+        if (promotion.isFirstOrder()
+                && orderRepository.existsByCustomer_IdAndStatus(
+                        customerId,
+                        OrderStatus.COMPLETED
+                )) {
+            throw new BadRequestException(
+                    "Voucher chỉ áp dụng cho đơn hàng đầu tiên đã hoàn tất"
+            );
+        }
+        if (!promotion.getSpecialDaysOfMonth().isEmpty()
+                && !promotion.getSpecialDaysOfMonth().contains(
+                        OffsetDateTime.now(BUSINESS_TIME_ZONE).getDayOfMonth()
+                )) {
+            throw new BadRequestException(
+                    "Voucher chỉ áp dụng vào các ngày đặc biệt đã quy định"
+            );
+        }
+    }
+
+    private BigDecimal getQualifyingSubtotal(
+            Promotion promotion,
+            BigDecimal subtotal,
+            Map<UUID, BigDecimal> categorySubtotals
+    ) {
+        if (promotion.getApplicableCategories().isEmpty()) {
+            return subtotal;
+        }
+
+        Set<UUID> eligibleCategoryIds = new HashSet<>();
+        promotion.getApplicableCategories().forEach(category ->
+                eligibleCategoryIds.addAll(
+                        categoryRepository.findSelfAndDescendantIds(category.getId())
+                )
+        );
+        BigDecimal qualifyingSubtotal = categorySubtotals.entrySet().stream()
+                .filter(entry -> eligibleCategoryIds.contains(entry.getKey()))
+                .map(Map.Entry::getValue)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (qualifyingSubtotal.signum() <= 0) {
+            throw new BadRequestException(
+                    "Giỏ hàng không có sản phẩm thuộc danh mục áp dụng voucher"
+            );
+        }
+        return qualifyingSubtotal.min(subtotal);
     }
 
     private int getCustomerUsage(UUID promotionId, UUID customerId) {

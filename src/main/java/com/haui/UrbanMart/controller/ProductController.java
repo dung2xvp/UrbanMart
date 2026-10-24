@@ -2,6 +2,7 @@ package com.haui.UrbanMart.controller;
 
 import com.haui.UrbanMart.dto.response.ApiResponse;
 import com.haui.UrbanMart.dto.response.ProductResponse;
+import com.haui.UrbanMart.dto.response.ProductSuggestionResponse;
 import com.haui.UrbanMart.exception.BadRequestException;
 import com.haui.UrbanMart.repository.ProductListSort;
 import com.haui.UrbanMart.service.ProductService;
@@ -54,6 +55,29 @@ public class ProductController {
                         productSort,
                         pageable
                 ));
+    }
+
+    @GetMapping("/search-suggestions")
+    public ApiResponse<List<ProductSuggestionResponse>> getSearchSuggestions(
+            @RequestParam UUID branchId,
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "3") int limit
+    ) {
+        if (keyword.isBlank()) {
+            throw new BadRequestException("keyword không được để trống");
+        }
+        if (limit < 1 || limit > 10) {
+            throw new BadRequestException("limit phải nằm trong khoảng từ 1 đến 10");
+        }
+
+        return ApiResponse.success(
+                "Lấy danh sách gợi ý thành công",
+                productService.getProductSearchSuggestions(
+                        branchId,
+                        keyword,
+                        limit
+                )
+        );
     }
 
     @GetMapping("/category/{categoryId}")

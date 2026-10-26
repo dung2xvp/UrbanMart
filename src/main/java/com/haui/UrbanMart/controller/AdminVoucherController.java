@@ -7,6 +7,7 @@ import com.haui.UrbanMart.dto.response.VoucherResponse;
 import com.haui.UrbanMart.exception.BadRequestException;
 import com.haui.UrbanMart.service.VoucherService;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +26,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/vouchers")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminVoucherController {
 

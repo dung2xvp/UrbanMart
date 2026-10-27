@@ -42,7 +42,7 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
                   )
               ))
               AND (
-                  :keyword IS NULL
+                  :keyword = ''
                   OR lower(promotion.code) LIKE lower(concat('%', :keyword, '%'))
                   OR lower(promotion.title) LIKE lower(concat('%', :keyword, '%'))
               )
@@ -60,7 +60,7 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
             FROM Promotion promotion
             WHERE (:active IS NULL OR promotion.active = :active)
               AND (
-                  :keyword IS NULL
+                  :keyword = ''
                   OR lower(promotion.code) LIKE lower(concat('%', :keyword, '%'))
                   OR lower(promotion.title) LIKE lower(concat('%', :keyword, '%'))
               )

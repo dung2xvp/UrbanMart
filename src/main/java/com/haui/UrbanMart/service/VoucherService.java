@@ -207,6 +207,6 @@ public class VoucherService {
     }
 
     private String normalizeKeyword(String keyword) {
-        return keyword == null || keyword.isBlank() ? null : keyword.trim();
+        return keyword == null || keyword.isBlank() ? "" : keyword.trim();
     }
 }

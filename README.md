@@ -297,6 +297,7 @@ API gợi ý tìm kiếm yêu cầu `keyword` và `branchId`, `limit` mặc đ�
 
 ```http
 GET    /api/vouchers?keyword={keyword}&isAvailableOnly=true&page=0&size=10
+GET    /api/vouchers?branchId={branchId}&page=0&size=10
 GET    /api/vouchers/{voucherId}
 POST   /api/vouchers/apply
 GET    /api/admin/vouchers?keyword={keyword}&isActive=true&page=0&size=20
@@ -307,6 +308,8 @@ DELETE /api/admin/vouchers/{voucherId}
 ```
 
 Request tạo/cập nhật nhận `code`, `title`, `description`, `discountType` (`FIXED` hoặc `PERCENT`), `discountValue`, `maxDiscountAmount`, `minOrderAmount`, `startDate`, `endDate`, `branchId` (tùy chọn), `usageLimit`, `userLimit`, `isActive` và `conditions`. Trong `conditions`, có thể truyền `isFirstOrder`, `applicableCategoryIds` và `specialDaysOfMonth`. Voucher xóa mềm bằng cách chuyển sang không hoạt động để giữ lịch sử đơn hàng.
+
+Khi gọi danh sách voucher kèm `branchId`, khách hàng cần đăng nhập; response thêm `usedByCurrentUser`, `userUsageCount`, `status`, `canApply` và `ineligibilityReasons`, được tính theo giỏ hàng hiện tại tại chi nhánh đó. `status` gồm `AVAILABLE`, `NOT_ELIGIBLE`, `USED` (đã đạt giới hạn lượt dùng cá nhân) và `EXPIRED`; lý do không áp dụng gồm `EMPTY_CART`, `BRANCH_MISMATCH`, `NOT_STARTED`, `EXPIRED`, `MIN_ORDER_VALUE`, `GLOBAL_USAGE_LIMIT_REACHED`, `USER_USAGE_LIMIT_REACHED`, `FIRST_ORDER_ONLY`, `SPECIAL_DAY_ONLY` và `NO_APPLICABLE_PRODUCTS`. Dùng `isAvailableOnly=false` để API trả cả voucher hết hạn, chưa đến ngày bắt đầu hoặc đã hết lượt toàn hệ thống. `usedByCurrentUser` vẫn có thể là `true` trong khi `canApply` là `true` nếu voucher cho phép người dùng dùng nhiều lần và chưa hết lượt. Không truyền `branchId` thì danh sách giữ response công khai hiện tại, các trường trạng thái cá nhân không có giá trị.
 
 `POST /api/vouchers/apply` nhận `{ "code": "...", "branchId": "..." }`; backend lấy giỏ hàng và giá hiện tại, không nhận subtotal từ client. API chỉ báo giá, không giữ lượt sử dụng. Khi tạo đơn, voucher được kiểm tra lại và lượt dùng được ghi nhận trong cùng transaction. Giá sale áp dụng cho toàn bộ số lượng; voucher tính tiếp trên giá sau sale. Với voucher giới hạn danh mục, khoản giảm chỉ tính trên sản phẩm thuộc danh mục được chọn và các danh mục con; ngưỡng đơn tối thiểu vẫn so với tổng tiền hàng sau sale, trước voucher. Ngày đặc biệt được tính theo múi giờ Việt Nam.
 

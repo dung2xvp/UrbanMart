@@ -8,9 +8,21 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.UUID;
+import java.util.List;
 
 public interface PromotionUserUsageRepository
         extends JpaRepository<PromotionUserUsage, PromotionUserUsageId> {
+
+    @Query("""
+            SELECT usage
+            FROM PromotionUserUsage usage
+            WHERE usage.id.customerId = :customerId
+              AND usage.id.promotionId IN :promotionIds
+            """)
+    List<PromotionUserUsage> findAllForCustomerAndPromotions(
+            @Param("customerId") UUID customerId,
+            @Param("promotionIds") List<UUID> promotionIds
+    );
 
     @Modifying(flushAutomatically = true)
     @Query(value = """

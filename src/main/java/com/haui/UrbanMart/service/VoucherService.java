@@ -1,10 +1,13 @@
 package com.haui.UrbanMart.service;
 
 import com.haui.UrbanMart.dto.request.VoucherWriteRequest;
+import com.haui.UrbanMart.dto.response.VoucherIneligibilityReason;
+import com.haui.UrbanMart.dto.response.VoucherStatus;
 import com.haui.UrbanMart.dto.response.VoucherResponse;
 import com.haui.UrbanMart.entity.Branch;
 import com.haui.UrbanMart.entity.BranchStatus;
 import com.haui.UrbanMart.entity.Category;
+import com.haui.UrbanMart.entity.OrderStatus;
 import com.haui.UrbanMart.entity.Promotion;
 import com.haui.UrbanMart.entity.PromotionType;
 import com.haui.UrbanMart.exception.BadRequestException;
@@ -12,7 +15,9 @@ import com.haui.UrbanMart.exception.ConflictException;
 import com.haui.UrbanMart.exception.ResourceNotFoundException;
 import com.haui.UrbanMart.repository.BranchRepository;
 import com.haui.UrbanMart.repository.CategoryRepository;
+import com.haui.UrbanMart.repository.OrderRepository;
 import com.haui.UrbanMart.repository.PromotionRepository;
+import com.haui.UrbanMart.repository.PromotionUserUsageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,32 +26,169 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class VoucherService {
 
     private final PromotionRepository promotionRepository;
+    private final PromotionUserUsageRepository promotionUserUsageRepository;
+    private final OrderRepository orderRepository;
     private final CategoryRepository categoryRepository;
     private final BranchRepository branchRepository;
+    private final OrderService orderService;
+
+    private static final ZoneId BUSINESS_TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     @Transactional(readOnly = true)
     public Page<VoucherResponse> getPublicVouchers(
             String keyword,
             boolean availableOnly,
-            Pageable pageable
+            Pageable pageable,
+            UUID customerId,
+            UUID branchId
     ) {
-        return promotionRepository.findPublicVouchers(
+        var promotions = promotionRepository.findPublicVouchers(
                         normalizeKeyword(keyword),
                         availableOnly,
                         OffsetDateTime.now(),
                         pageable
-                )
-                .map(VoucherResponse::from);
+                );
+        if (customerId == null || branchId == null) {
+            return promotions.map(VoucherResponse::from);
+        }
+
+        OrderService.CartVoucherContext cartContext =
+                orderService.getCartVoucherContext(customerId, branchId);
+        List<UUID> promotionIds = promotions.getContent().stream()
+                .map(Promotion::getId)
+                .toList();
+        Map<UUID, Integer> usageCounts = promotionIds.isEmpty()
+                ? Map.of()
+                : promotionUserUsageRepository.findAllForCustomerAndPromotions(
+                                customerId,
+                                promotionIds
+                        ).stream()
+                        .collect(Collectors.toMap(
+                                usage -> usage.getId().getPromotionId(),
+                                usage -> usage.getUsedCount()
+                        ));
+        return promotions.map(promotion -> {
+            int usageCount = usageCounts.getOrDefault(promotion.getId(), 0);
+            return VoucherResponse.from(
+                    promotion,
+                    assessEligibility(
+                            promotion,
+                            customerId,
+                            branchId,
+                            cartContext,
+                            usageCount
+                    )
+            );
+        });
+    }
+
+    private VoucherResponse.CustomerEligibility assessEligibility(
+            Promotion promotion,
+            UUID customerId,
+            UUID branchId,
+            OrderService.CartVoucherContext cartContext,
+            int usageCount
+    ) {
+        OffsetDateTime now = OffsetDateTime.now();
+        boolean usedByCurrentUser = usageCount > 0;
+        List<VoucherIneligibilityReason> reasons = new ArrayList<>();
+
+        if (usageCount >= promotion.getPerUserLimit()) {
+            return eligibility(
+                    true,
+                    usageCount,
+                    VoucherStatus.USED,
+                    List.of(VoucherIneligibilityReason.USER_USAGE_LIMIT_REACHED)
+            );
+        }
+        if (!now.isBefore(promotion.getEndsAt())) {
+            return eligibility(
+                    usedByCurrentUser,
+                    usageCount,
+                    VoucherStatus.EXPIRED,
+                    List.of(VoucherIneligibilityReason.EXPIRED)
+            );
+        }
+        if (now.isBefore(promotion.getStartsAt())) {
+            reasons.add(VoucherIneligibilityReason.NOT_STARTED);
+        }
+        if (promotion.getBranch() != null
+                && !promotion.getBranch().getId().equals(branchId)) {
+            reasons.add(VoucherIneligibilityReason.BRANCH_MISMATCH);
+        }
+        if (!cartContext.hasItems()) {
+            reasons.add(VoucherIneligibilityReason.EMPTY_CART);
+        } else if (cartContext.subtotal().compareTo(promotion.getMinOrderValue()) < 0) {
+            reasons.add(VoucherIneligibilityReason.MIN_ORDER_VALUE);
+        }
+        if (promotion.getUsageLimit() != null
+                && promotion.getUsedCount() >= promotion.getUsageLimit()) {
+            reasons.add(VoucherIneligibilityReason.GLOBAL_USAGE_LIMIT_REACHED);
+        }
+        if (promotion.isFirstOrder()
+                && orderRepository.existsByCustomer_IdAndStatus(
+                        customerId,
+                        OrderStatus.COMPLETED
+                )) {
+            reasons.add(VoucherIneligibilityReason.FIRST_ORDER_ONLY);
+        }
+        if (!promotion.getSpecialDaysOfMonth().isEmpty()
+                && !promotion.getSpecialDaysOfMonth().contains(
+                        OffsetDateTime.now(BUSINESS_TIME_ZONE).getDayOfMonth()
+                )) {
+            reasons.add(VoucherIneligibilityReason.SPECIAL_DAY_ONLY);
+        }
+        if (cartContext.hasItems() && !promotion.getApplicableCategories().isEmpty()) {
+            Set<UUID> eligibleCategoryIds = new HashSet<>();
+            promotion.getApplicableCategories().forEach(category ->
+                    eligibleCategoryIds.addAll(
+                            categoryRepository.findSelfAndDescendantIds(category.getId())
+                    )
+            );
+            boolean hasApplicableProducts = cartContext.categorySubtotals().entrySet().stream()
+                    .anyMatch(entry -> eligibleCategoryIds.contains(entry.getKey())
+                            && entry.getValue().signum() > 0);
+            if (!hasApplicableProducts) {
+                reasons.add(VoucherIneligibilityReason.NO_APPLICABLE_PRODUCTS);
+            }
+        }
+
+        return eligibility(
+                usedByCurrentUser,
+                usageCount,
+                reasons.isEmpty() ? VoucherStatus.AVAILABLE : VoucherStatus.NOT_ELIGIBLE,
+                reasons
+        );
+    }
+
+    private VoucherResponse.CustomerEligibility eligibility(
+            boolean usedByCurrentUser,
+            int usageCount,
+            VoucherStatus status,
+            List<VoucherIneligibilityReason> reasons
+    ) {
+        return new VoucherResponse.CustomerEligibility(
+                usedByCurrentUser,
+                usageCount,
+                status,
+                status == VoucherStatus.AVAILABLE,
+                List.copyOf(reasons)
+        );
     }
 
     @Transactional(readOnly = true)

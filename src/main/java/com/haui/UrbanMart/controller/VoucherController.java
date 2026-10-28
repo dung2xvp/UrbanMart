@@ -6,13 +6,16 @@ import com.haui.UrbanMart.dto.response.ApiResponse;
 import com.haui.UrbanMart.dto.response.PageResponse;
 import com.haui.UrbanMart.dto.response.VoucherApplyResponse;
 import com.haui.UrbanMart.dto.response.VoucherResponse;
+import com.haui.UrbanMart.entity.UserRole;
 import com.haui.UrbanMart.exception.BadRequestException;
+import com.haui.UrbanMart.exception.UnauthorizedException;
 import com.haui.UrbanMart.security.CustomUserDetails;
 import com.haui.UrbanMart.service.OrderService;
 import com.haui.UrbanMart.service.VoucherService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,16 +40,34 @@ public class VoucherController {
     public ApiResponse<PageResponse<VoucherResponse>> getVouchers(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "true") boolean isAvailableOnly,
+            @RequestParam(required = false) UUID branchId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal CustomUserDetails currentUser
     ) {
         validatePage(page, size);
+        UUID customerId = null;
+        if (branchId != null) {
+            if (currentUser == null) {
+                throw new UnauthorizedException(
+                        "Vui lòng đăng nhập để xem trạng thái voucher"
+                );
+            }
+            if (currentUser.getUser().getRole() != UserRole.CUSTOMER) {
+                throw new AccessDeniedException(
+                        "Chỉ khách hàng mới được xem trạng thái voucher cá nhân"
+                );
+            }
+            customerId = currentUser.getId();
+        }
         return ApiResponse.success(
                 "Lấy danh sách voucher thành công",
                 PageResponse.from(voucherService.getPublicVouchers(
                         keyword,
                         isAvailableOnly,
-                        PageRequest.of(page, size)
+                        PageRequest.of(page, size),
+                        customerId,
+                        branchId
                 ))
         );
     }

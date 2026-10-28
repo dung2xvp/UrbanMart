@@ -127,6 +127,34 @@ public class OrderService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public CartVoucherContext getCartVoucherContext(UUID customerId, UUID branchId) {
+        if (customerId == null || branchId == null) {
+            throw new BadRequestException("Thông tin giỏ hàng không hợp lệ");
+        }
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chi nhánh"));
+        if (branch.getStatus() != BranchStatus.ACTIVE || branch.isWarehouse()) {
+            throw new BadRequestException("Chi nhánh không nhận đơn hàng");
+        }
+
+        Cart cart = cartRepository.findByUserIdAndBranchId(customerId, branch.getId())
+                .orElse(null);
+        if (cart == null) {
+            return CartVoucherContext.empty();
+        }
+        List<CartItem> cartItems = cartItemRepository.findAllByCartId(cart.getId());
+        if (cartItems.isEmpty()) {
+            return CartVoucherContext.empty();
+        }
+        CartPricing pricing = calculateCartPricing(cartItems);
+        return new CartVoucherContext(
+                true,
+                pricing.subtotal(),
+                pricing.categorySubtotals()
+        );
+    }
+
     @Transactional
     public OrderDetailResponse confirmOrderReceived(UUID customerId, UUID orderId) {
         int updated = orderRepository.confirmDeliveredOrder(orderId, customerId);
@@ -564,6 +592,16 @@ public class OrderService {
             BigDecimal subtotal,
             Map<UUID, BigDecimal> categorySubtotals
     ) {
+    }
+
+    public record CartVoucherContext(
+            boolean hasItems,
+            BigDecimal subtotal,
+            Map<UUID, BigDecimal> categorySubtotals
+    ) {
+        private static CartVoucherContext empty() {
+            return new CartVoucherContext(false, BigDecimal.ZERO, Map.of());
+        }
     }
 
     private OrderDetailResponse toCustomerOrderDetail(

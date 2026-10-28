@@ -5,6 +5,7 @@ import com.haui.UrbanMart.entity.PromotionType;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -27,9 +28,21 @@ public record VoucherResponse(
         boolean isActive,
         Conditions conditions,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        Boolean usedByCurrentUser,
+        Integer userUsageCount,
+        VoucherStatus status,
+        Boolean canApply,
+        List<VoucherIneligibilityReason> ineligibilityReasons
 ) {
     public static VoucherResponse from(Promotion promotion) {
+        return from(promotion, null);
+    }
+
+    public static VoucherResponse from(
+            Promotion promotion,
+            CustomerEligibility eligibility
+    ) {
         Set<UUID> categoryIds = promotion.getApplicableCategories().stream()
                 .map(category -> category.getId())
                 .collect(Collectors.toUnmodifiableSet());
@@ -56,8 +69,22 @@ public record VoucherResponse(
                 promotion.isActive(),
                 conditions,
                 promotion.getCreatedAt(),
-                promotion.getUpdatedAt()
+                promotion.getUpdatedAt(),
+                eligibility == null ? null : eligibility.usedByCurrentUser(),
+                eligibility == null ? null : eligibility.userUsageCount(),
+                eligibility == null ? null : eligibility.status(),
+                eligibility == null ? null : eligibility.canApply(),
+                eligibility == null ? null : eligibility.ineligibilityReasons()
         );
+    }
+
+    public record CustomerEligibility(
+            boolean usedByCurrentUser,
+            int userUsageCount,
+            VoucherStatus status,
+            boolean canApply,
+            List<VoucherIneligibilityReason> ineligibilityReasons
+    ) {
     }
 
     public record Conditions(

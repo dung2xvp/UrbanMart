@@ -32,6 +32,15 @@ public class ProductDiscountService {
     }
 
     @Transactional(readOnly = true)
+    public List<ProductDiscountResponse> getByCategory(UUID categoryId) {
+        return productDiscountRepository
+                .findAllByProduct_Category_IdOrderByCreatedAtDesc(categoryId)
+                .stream()
+                .map(ProductDiscountResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public ProductDiscountResponse getById(UUID id) {
         return ProductDiscountResponse.from(findDiscount(id));
     }

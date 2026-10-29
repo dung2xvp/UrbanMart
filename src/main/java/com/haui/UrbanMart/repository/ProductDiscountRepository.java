@@ -39,6 +39,8 @@ public interface ProductDiscountRepository extends JpaRepository<ProductDiscount
 
     List<ProductDiscount> findAllByOrderByCreatedAtDesc();
 
+    List<ProductDiscount> findAllByProduct_Category_IdOrderByCreatedAtDesc(UUID categoryId);
+
     @Query("""
             select (count(discount) > 0)
             from ProductDiscount discount

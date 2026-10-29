@@ -26,6 +26,16 @@ public class ProductDiscountController {
         );
     }
 
+    @GetMapping("/category/{categoryId}")
+    public ApiResponse<List<ProductDiscountResponse>> getByCategory(
+            @PathVariable UUID categoryId
+    ) {
+        return ApiResponse.success(
+                "Lấy danh sách đợt giảm giá theo danh mục thành công",
+                productDiscountService.getByCategory(categoryId)
+        );
+    }
+
     @GetMapping("/{id}")
     public ApiResponse<ProductDiscountResponse> getById(
             @PathVariable UUID id

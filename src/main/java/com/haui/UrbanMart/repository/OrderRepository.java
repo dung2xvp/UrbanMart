@@ -151,6 +151,34 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
         @Param("customerId") UUID customerId
     );
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+        UPDATE orders
+        SET status = 'COMPLETED',
+            completed_at = now(),
+            payment_status = CASE
+                WHEN payment_method = 'COD' THEN 'PAID'::payment_status
+                ELSE payment_status
+            END,
+            paid_at = CASE
+                WHEN payment_method = 'COD' THEN now()
+                ELSE paid_at
+            END,
+            paid_confirmed_by = CASE
+                WHEN payment_method = 'COD' THEN :customerId
+                ELSE paid_confirmed_by
+            END,
+            updated_at = now()
+        WHERE id = :orderId
+          AND customer_id = :customerId
+          AND delivery_type = 'PICKUP'
+          AND status = 'READY_FOR_PICKUP'
+        """, nativeQuery = true)
+    int confirmPickupOrder(
+        @Param("orderId") UUID orderId,
+        @Param("customerId") UUID customerId
+    );
+
     @Modifying
     @Query(value = """
         UPDATE orders

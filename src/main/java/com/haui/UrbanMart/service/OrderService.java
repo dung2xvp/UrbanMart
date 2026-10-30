@@ -157,12 +157,36 @@ public class OrderService {
 
     @Transactional
     public OrderDetailResponse confirmOrderReceived(UUID customerId, UUID orderId) {
-        int updated = orderRepository.confirmDeliveredOrder(orderId, customerId);
-        if (updated == 0) {
-            Order order = orderRepository.findByIdAndCustomer_Id(orderId, customerId)
+        Order order = orderRepository.findByIdAndCustomer_Id(orderId, customerId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Không tìm thấy đơn hàng"
+                ));
+        if (order.getDeliveryType() == DeliveryType.PICKUP
+                && order.getStatus() == OrderStatus.READY_FOR_PICKUP) {
+            if (orderRepository.confirmPickupOrder(orderId, customerId) == 0) {
+                throw new ConflictException(
+                        "Đơn hàng chưa sẵn sàng để xác nhận đã nhận"
+                );
+            }
+            Order pickedUpOrder = orderRepository.findByIdAndCustomer_Id(orderId, customerId)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Không tìm thấy đơn hàng"
                     ));
+            for (OrderItem item : orderItemRepository
+                    .findAllByOrder_IdOrderByProduct_IdAsc(orderId)) {
+                inventoryService.completePickup(
+                        pickedUpOrder.getBranch().getId(),
+                        item.getProduct().getId(),
+                        item.getQuantity(),
+                        pickedUpOrder,
+                        customerId
+                );
+            }
+            return getCustomerOrder(customerId, orderId);
+        }
+
+        int updated = orderRepository.confirmDeliveredOrder(orderId, customerId);
+        if (updated == 0) {
             if (order.getStatus() != OrderStatus.DELIVERED_PENDING_CONFIRMATION) {
                 throw new ConflictException(
                         "Đơn hàng chưa được ghi nhận đã bàn giao hoặc đã hoàn tất"

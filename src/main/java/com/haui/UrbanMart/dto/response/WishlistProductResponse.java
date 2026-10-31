@@ -22,11 +22,13 @@ public class WishlistProductResponse {
     private BigDecimal discountPercent;
     private OffsetDateTime discountStartsAt;
     private OffsetDateTime discountEndsAt;
+    private long stockQuantity;
     private OffsetDateTime addedAt;
 
     public static WishlistProductResponse from(
             Wishlist wishlist,
-            ProductPrice productPrice
+            ProductPrice productPrice,
+            long stockQuantity
     ) {
         var product = wishlist.getProduct();
 
@@ -41,6 +43,7 @@ public class WishlistProductResponse {
                 productPrice.discountPercent(),
                 productPrice.discountStartsAt(),
                 productPrice.discountEndsAt(),
+                stockQuantity,
                 wishlist.getCreatedAt()
         );
     }

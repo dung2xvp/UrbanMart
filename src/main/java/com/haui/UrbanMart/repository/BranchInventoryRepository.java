@@ -15,11 +15,29 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.util.Collection;
 
 public interface BranchInventoryRepository extends
         JpaRepository<BranchInventory, UUID>,
         BranchInventorySearchRepository {
     Optional<BranchInventory> findByBranchIdAndProductId(UUID branchId, UUID productId);
+
+    @Query("""
+            SELECT inventory.product.id AS productId,
+                   SUM(inventory.stockQuantity) AS stockQuantity
+            FROM BranchInventory inventory
+            WHERE inventory.product.id IN :productIds
+            GROUP BY inventory.product.id
+            """)
+    List<ProductStockQuantity> sumStockQuantitiesByProductIds(
+            @Param("productIds") Collection<UUID> productIds
+    );
+
+    interface ProductStockQuantity {
+        UUID getProductId();
+
+        Long getStockQuantity();
+    }
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

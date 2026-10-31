@@ -7,11 +7,13 @@ import com.haui.UrbanMart.dto.response.OrderDetailResponse;
 import com.haui.UrbanMart.dto.response.OrderPricingResponse;
 import com.haui.UrbanMart.dto.response.OrderSummaryResponse;
 import com.haui.UrbanMart.entity.*;
+import com.haui.UrbanMart.event.BranchOrderCreatedEvent;
 import com.haui.UrbanMart.exception.BadRequestException;
 import com.haui.UrbanMart.exception.ConflictException;
 import com.haui.UrbanMart.exception.ResourceNotFoundException;
 import com.haui.UrbanMart.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
@@ -42,6 +44,8 @@ public class OrderService {
     private final ProductPricingService productPricingService;
     private final InventoryService inventoryService;
     private final PromotionService promotionService;
+    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public Page<OrderSummaryResponse> getCustomerOrders(
@@ -389,6 +393,20 @@ public class OrderService {
         }
 
         cartItemRepository.deleteAllByCartId(cart.getId());
+
+        notificationService.createOrderNotification(
+                order,
+                "Đã nhận được đơn hàng " + order.getOrderCode(),
+                "Đơn hàng của bạn đã được gửi đến chi nhánh và đang chờ xác nhận."
+        );
+        if (branch.getAccount() != null) {
+            eventPublisher.publishEvent(new BranchOrderCreatedEvent(
+                    branch.getAccount().getId(),
+                    order.getId(),
+                    order.getOrderCode(),
+                    branch.getId()
+            ));
+        }
 
         return response;
     }

@@ -43,7 +43,7 @@ Các file migration nằm trong `db/migrations/`, đặt tên `V1`, `V2`... và 
 **Trên macOS/Linux:**
 ```bash
 cd db/migrations
-for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql V8__product_sku_sequence.sql V9__orders_payments_and_promotions.sql V10__inventory_reservations_and_movements.sql V11__backfill_branch_inventory_products.sql V12__branch_inventory_expiry_lots.sql V13__order_handover_confirmation.sql V14__voucher_details_and_conditions.sql; do
+for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql V8__product_sku_sequence.sql V9__orders_payments_and_promotions.sql V10__inventory_reservations_and_movements.sql V11__backfill_branch_inventory_products.sql V12__branch_inventory_expiry_lots.sql V13__order_handover_confirmation.sql V14__voucher_details_and_conditions.sql V15__notifications.sql; do
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1 < "$f" || break
 done
 ```
@@ -51,7 +51,7 @@ done
 **Trên Windows (PowerShell)** — `<` không dùng được như Linux, phải dùng `Get-Content`:
 ```powershell
 cd db\migrations
-$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql","V8__product_sku_sequence.sql","V9__orders_payments_and_promotions.sql","V10__inventory_reservations_and_movements.sql","V11__backfill_branch_inventory_products.sql","V12__branch_inventory_expiry_lots.sql","V13__order_handover_confirmation.sql","V14__voucher_details_and_conditions.sql"
+$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql","V8__product_sku_sequence.sql","V9__orders_payments_and_promotions.sql","V10__inventory_reservations_and_movements.sql","V11__backfill_branch_inventory_products.sql","V12__branch_inventory_expiry_lots.sql","V13__order_handover_confirmation.sql","V14__voucher_details_and_conditions.sql","V15__notifications.sql"
 foreach ($f in $files) {
     Get-Content -Raw $f | docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
     if ($LASTEXITCODE -ne 0) { break }
@@ -98,7 +98,7 @@ Migration `V7` thêm cột `products.is_daily_fresh`, mặc định `false`, đ�
 Migration `V8` tạo sequence `product_sku_seq` dùng để sinh SKU tự động khi tạo sản phẩm và khởi tạo sequence tiếp nối mã SKU `SP...` hiện có.
 
 Migration `V9` tạo schema đơn hàng, chi tiết đơn, payment attempts và voucher/redemption. Migration `V10` bổ sung số lượng giữ/ngưỡng tồn thấp và sổ lịch sử biến động tồn kho. Migration `V13` bổ sung trạng thái chờ khách xác nhận đã nhận hàng và thời điểm bàn giao. Chỉ chạy V9/V10 sau khi database đã áp dụng V1–V8; nếu đã có migration lịch sử riêng cho các bảng này, cần đối chiếu schema thực tế trước khi áp dụng.
-Migration `V14` bổ sung tiêu đề, mô tả và điều kiện danh mục/đơn đầu tiên/ngày đặc biệt cho voucher.
+Migration `V14` bổ sung tiêu đề, mô tả và điều kiện danh mục/đơn đầu tiên/ngày đặc biệt cho voucher. Migration `V15` tạo bảng thông báo cùng các index tra cứu theo người dùng, thời gian và trạng thái chưa đọc.
 
 Nếu database đã chạy đến V12, áp dụng V13 trước khi khởi động phiên bản code này:
 
@@ -111,6 +111,13 @@ Nếu database đã chạy đến V13, áp dụng V14 trước khi khởi độn
 
 ```powershell
 Get-Content -Raw .\db\migrations\V14__voucher_details_and_conditions.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+```
+
+Nếu database đã chạy đến V14, áp dụng V15 trước khi khởi động phiên bản code có API thông báo:
+
+```powershell
+Get-Content -Raw .\db\migrations\V15__notifications.sql |
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
 ```
 
@@ -278,6 +285,7 @@ curl http://localhost:8080/api/health
 | Sản phẩm bán chạy | Chưa triển khai | ⏳ Chưa làm theo phạm vi hiện tại |
 | Yêu thích sản phẩm | `/api/wishlists` | ✅ Đã code |
 | Giỏ hàng | `/api/cart` | ✅ Đã code |
+| Thông báo khách hàng | `/api/v1/notifications` | ✅ Phân trang, lọc, unread count, đọc/xóa và realtime |
 
 ### API danh sách sản phẩm tuần 4
 
@@ -456,6 +464,44 @@ PATCH /api/branches/{branchId}/orders/{orderId}/retry-delivery
 ```
 
 Luồng giao tận nơi: `PENDING` → `PROCESSING` → `SHIPPING` → `DELIVERED_PENDING_CONFIRMATION` → `COMPLETED`. Luồng khách tự lấy: `PENDING` → `PROCESSING` → `READY_FOR_PICKUP` → `DELIVERED_PENDING_CONFIRMATION` → `COMPLETED`. Nhân viên xác nhận bàn giao bằng `handover` sau khi giao thành công hoặc khách đã nhận hàng tại chi nhánh; việc này ghi `deliveredAt`. Khách có thể xác nhận nhận hàng bằng endpoint riêng. Nếu khách không xác nhận, hệ thống tự chuyển sang `COMPLETED` sau 72 giờ từ `deliveredAt` (tác vụ kiểm tra chạy mỗi phút). Đơn giao thất bại được ghi lý do và có thể chuyển lại sang `SHIPPING`; trạng thái này chưa khởi động thời hạn tự hoàn tất.
+
+Khi khách đặt hàng thành công, backend lưu thông báo `ORDER` cho khách và phát sự kiện đơn mới đến tài khoản `BRANCH` đang gắn với chi nhánh đặt hàng. Khi nhân viên xác nhận, hủy, hoàn tất chuẩn bị, bàn giao, ghi nhận giao thất bại hoặc giao lại, khách nhận được thông báo cập nhật đơn hàng. Sự kiện realtime chỉ được phát sau khi transaction thành công; nếu bỏ lỡ sự kiện, nhân viên tải lại danh sách đơn bằng API `GET /api/branches/{branchId}/orders`.
+
+### API thông báo (tuần 8)
+
+Các API dưới đây yêu cầu access token của role `CUSTOMER`. Danh sách mặc định sắp xếp thông báo mới nhất trước; `page` bắt đầu từ `0`, `size` mặc định `10` và giới hạn tối đa `100`.
+
+```http
+GET    /api/v1/notifications?page=0&size=10
+GET    /api/v1/notifications?type=ORDER&isRead=false&page=0&size=10
+GET    /api/v1/notifications/unread-count
+PATCH  /api/v1/notifications/{id}/read
+PATCH  /api/v1/notifications/read-all
+DELETE /api/v1/notifications/{id}
+```
+
+Query params tùy chọn cho danh sách: `type` (`ORDER`, `PROMOTION`, `SYSTEM`, `ENGAGEMENT`) và `isRead` (`true`/`false`). Response danh sách có `data.content`, `page`, `size`, `totalElements`, `totalPages`, `unreadCount`; mỗi thông báo gồm `id`, `title`, `content`, `type`, `isRead`, `imageUrl`, `targetUrl`, `referenceId`, `createdAt`. `imageUrl` và `referenceId` có thể là `null`. API unread count trả `data.unreadCount`. Các API đánh dấu đọc/xóa chỉ tác động thông báo thuộc người dùng hiện tại.
+
+### Realtime thông báo và đơn hàng
+
+Backend dùng WebSocket STOMP tại `/ws` (không bật SockJS). Gửi access token trong header STOMP `CONNECT` (`Authorization: Bearer <access_token>`), sau đó đăng ký destination tương ứng:
+
+| Người nhận | Destination | Nội dung |
+|---|---|---|
+| Khách hàng | `/user/queue/notifications` | Một `NotificationResponse` mới, không bọc trong `ApiResponse` |
+| Tài khoản chi nhánh | `/user/queue/branch-orders` | Tóm tắt đơn mới gồm `orderId`, `orderCode`, `branchId`, `status`, `createdAt` |
+
+Chỉ tài khoản chi nhánh đã xác thực mới được đăng ký kênh đơn mới. Mỗi chi nhánh hiện gắn tối đa một tài khoản `BRANCH`. Frontend dùng `orderId` để tải chi tiết đơn qua API chi nhánh hiện có. WebSocket origin hiện cho phép `http://localhost:3000`; cập nhật cấu hình `WebSocketConfig` nếu frontend dev chạy ở origin khác.
+
+Kiểm thử thủ công:
+
+1. Đăng nhập lấy token khách hàng và token `BRANCH` đã được gắn với một chi nhánh.
+2. Kết nối cả hai client tới `ws://localhost:8080/ws`, truyền header STOMP `Authorization`, lần lượt đăng ký các destination ở bảng trên.
+3. Từ khách hàng, tạo đơn bằng `POST /api/orders` với body theo `CreateOrderRequest`. Nhân viên chi nhánh tương ứng phải nhận sự kiện tại `/user/queue/branch-orders`; khách nhận notification `ORDER` tại `/user/queue/notifications`.
+4. Gọi `GET /api/v1/notifications` và `/unread-count` bằng token khách để xác nhận thông báo đã được lưu. Thử `PATCH .../{id}/read`, `PATCH .../read-all`, `DELETE .../{id}` và bộ lọc `type`/`isRead`.
+5. Cập nhật trạng thái đơn bằng API nhân viên; khách phải nhận notification tương ứng. Thử tạo đơn tại chi nhánh khác để xác nhận chỉ tài khoản chi nhánh đó nhận sự kiện.
+
+Nếu WebSocket ngắt kết nối, REST API vẫn là nguồn dữ liệu chính: khách tải lại danh sách thông báo, nhân viên tải lại danh sách đơn chi nhánh.
 
 Sản phẩm đã ngừng kinh doanh có thể được khôi phục riêng, không cần mở quyền sửa `status` trong request cập nhật thông tin sản phẩm:
 

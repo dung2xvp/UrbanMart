@@ -35,6 +35,7 @@ public class BranchOrderService {
     private final OrderPromotionRepository orderPromotionRepository;
     private final InventoryService inventoryService;
     private final PromotionService promotionService;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public Page<OrderSummaryResponse> getOrders(
@@ -61,12 +62,19 @@ public class BranchOrderService {
     @Transactional
     public OrderDetailResponse confirmOrder(UUID branchId, UUID accountId, UUID orderId) {
         requireOrder(branchId, accountId, orderId);
-        return updateOrder(
+        OrderDetailResponse response = updateOrder(
                 branchId,
                 orderId,
                 () -> orderRepository.confirmPendingOrder(orderId, branchId),
                 "Chỉ đơn đang chờ xác nhận mới có thể xác nhận"
         );
+        notifyCustomer(
+                branchId,
+                orderId,
+                "Đơn hàng đã được xác nhận",
+                "Chi nhánh đã xác nhận đơn hàng và bắt đầu chuẩn bị."
+        );
+        return response;
     }
 
     @Transactional
@@ -100,6 +108,11 @@ public class BranchOrderService {
         promotionService.releaseForCancelledOrder(orderId);
         Order cancelledOrder = orderRepository.findByIdAndBranch_Id(orderId, branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
+        notificationService.createOrderNotification(
+                cancelledOrder,
+                "Đơn hàng đã bị hủy",
+                "Chi nhánh đã hủy đơn hàng " + cancelledOrder.getOrderCode() + "."
+        );
         return toDetail(cancelledOrder);
     }
 
@@ -136,6 +149,17 @@ public class BranchOrderService {
                 );
             }
         }
+        notificationService.createOrderNotification(
+                preparedOrder,
+                preparedOrder.getDeliveryType() == DeliveryType.DELIVERY
+                        ? "Đơn hàng đang được giao"
+                        : "Đơn hàng đã sẵn sàng nhận",
+                preparedOrder.getDeliveryType() == DeliveryType.DELIVERY
+                        ? "Đơn hàng " + preparedOrder.getOrderCode()
+                                + " đã được chuẩn bị và đang trên đường giao đến bạn."
+                        : "Đơn hàng " + preparedOrder.getOrderCode()
+                                + " đã sẵn sàng tại chi nhánh."
+        );
         return toDetail(preparedOrder);
     }
 
@@ -163,6 +187,12 @@ public class BranchOrderService {
                 );
             }
         }
+        notificationService.createOrderNotification(
+                order,
+                "Đơn hàng đã được bàn giao",
+                "Đơn hàng " + order.getOrderCode()
+                        + " đã được bàn giao. Vui lòng xác nhận khi nhận hàng."
+        );
         return toDetail(order);
     }
 
@@ -174,7 +204,7 @@ public class BranchOrderService {
             DeliveryFailedRequest request
     ) {
         requireOrder(branchId, accountId, orderId);
-        return updateOrder(
+        OrderDetailResponse response = updateOrder(
                 branchId,
                 orderId,
                 () -> orderRepository.markDeliveryFailed(
@@ -182,17 +212,42 @@ public class BranchOrderService {
                 ),
                 "Chỉ đơn đang giao mới có thể ghi nhận giao thất bại"
         );
+        notifyCustomer(
+                branchId,
+                orderId,
+                "Giao hàng chưa thành công",
+                "Đơn hàng chưa thể giao thành công. Chi nhánh sẽ liên hệ để hỗ trợ."
+        );
+        return response;
     }
 
     @Transactional
     public OrderDetailResponse retryDelivery(UUID branchId, UUID accountId, UUID orderId) {
         requireOrder(branchId, accountId, orderId);
-        return updateOrder(
+        OrderDetailResponse response = updateOrder(
                 branchId,
                 orderId,
                 () -> orderRepository.retryDelivery(orderId, branchId),
                 "Chỉ đơn giao thất bại mới có thể giao lại"
         );
+        notifyCustomer(
+                branchId,
+                orderId,
+                "Đơn hàng đang được giao lại",
+                "Đơn hàng " + response.getOrderCode() + " đang được giao lại."
+        );
+        return response;
+    }
+
+    private void notifyCustomer(
+            UUID branchId,
+            UUID orderId,
+            String title,
+            String content
+    ) {
+        Order order = orderRepository.findByIdAndBranch_Id(orderId, branchId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng"));
+        notificationService.createOrderNotification(order, title, content);
     }
 
     private OrderDetailResponse updateOrder(

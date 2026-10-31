@@ -7,6 +7,7 @@ import com.haui.UrbanMart.entity.User;
 import com.haui.UrbanMart.entity.Wishlist;
 import com.haui.UrbanMart.exception.ConflictException;
 import com.haui.UrbanMart.exception.ResourceNotFoundException;
+import com.haui.UrbanMart.repository.BranchInventoryRepository;
 import com.haui.UrbanMart.repository.ProductRepository;
 import com.haui.UrbanMart.repository.UserRepository;
 import com.haui.UrbanMart.repository.WishlistRepository;
@@ -17,12 +18,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class WishlistService {
 
     private final WishlistRepository wishlistRepository;
+    private final BranchInventoryRepository branchInventoryRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final ProductPricingService productPricingService;
@@ -31,6 +34,20 @@ public class WishlistService {
     public List<WishlistProductResponse> getMyWishlist(UUID userId) {
         List<Wishlist> wishlists = wishlistRepository
                 .findAllByUserIdOrderByCreatedAtDesc(userId);
+        if (wishlists.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> productIds = wishlists.stream()
+                .map(wishlist -> wishlist.getProduct().getId())
+                .toList();
+        Map<UUID, Long> stockQuantities = branchInventoryRepository
+                .sumStockQuantitiesByProductIds(productIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        BranchInventoryRepository.ProductStockQuantity::getProductId,
+                        BranchInventoryRepository.ProductStockQuantity::getStockQuantity
+                ));
         Map<UUID, ProductPrice> prices = productPricingService.getCurrentPrices(
                 wishlists.stream().map(Wishlist::getProduct).toList()
         );
@@ -38,7 +55,11 @@ public class WishlistService {
         return wishlists.stream()
                 .map(wishlist -> WishlistProductResponse.from(
                         wishlist,
-                        prices.get(wishlist.getProduct().getId())
+                        prices.get(wishlist.getProduct().getId()),
+                        stockQuantities.getOrDefault(
+                                wishlist.getProduct().getId(),
+                                0L
+                        )
                 ))
                 .toList();
     }

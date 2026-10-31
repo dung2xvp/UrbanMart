@@ -69,6 +69,8 @@ class OrderServiceTest {
                 null,
                 null,
                 inventoryService,
+                null,
+                null,
                 null
         );
 

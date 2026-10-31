@@ -45,6 +45,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler)           // 403
                 )
                 .authorizeHttpRequests(request -> request
+                        .requestMatchers("/ws", "/ws/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/branches/nearby").permitAll()

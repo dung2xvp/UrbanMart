@@ -1,6 +1,7 @@
 package com.haui.UrbanMart.service;
 
 import com.haui.UrbanMart.dto.request.ProductWriteRequest;
+import com.haui.UrbanMart.dto.response.BestSellingProductResponse;
 import com.haui.UrbanMart.dto.response.ProductAdminResponse;
 import com.haui.UrbanMart.dto.response.ProductResponse;
 import com.haui.UrbanMart.dto.response.ProductSuggestionResponse;
@@ -10,6 +11,7 @@ import com.haui.UrbanMart.repository.BranchInventoryRepository;
 import com.haui.UrbanMart.repository.BranchRepository;
 import com.haui.UrbanMart.repository.BrandRepository;
 import com.haui.UrbanMart.repository.CategoryRepository;
+import com.haui.UrbanMart.repository.OrderItemRepository;
 import com.haui.UrbanMart.repository.ProductListSort;
 import com.haui.UrbanMart.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +22,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
@@ -34,6 +39,7 @@ public class ProductService {
     private final BranchRepository branchRepository;
     private final CategoryRepository categoryRepository;
     private final BrandRepository brandRepository;
+    private final OrderItemRepository orderItemRepository;
     private final ProductPricingService productPricingService;
 
     @Transactional(readOnly = true)
@@ -72,6 +78,65 @@ public class ProductService {
                 ProductListSort.NAME_ASC,
                 PageRequest.of(0, limit)
         ).map(ProductSuggestionResponse::from).getContent();
+    }
+
+    @Transactional(readOnly = true)
+    public List<BestSellingProductResponse> getBestSellingProducts(
+            UUID branchId,
+            int limit
+    ) {
+        validateSellingBranch(branchId);
+
+        List<OrderItemRepository.BestSellingProduct> bestSelling =
+                orderItemRepository.findBestSellingProducts(
+                        branchId,
+                        OrderStatus.COMPLETED,
+                        ProductStatus.ACTIVE,
+                        PageRequest.of(0, limit)
+                );
+        if (bestSelling.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> productIds = bestSelling.stream()
+                .map(OrderItemRepository.BestSellingProduct::getProductId)
+                .toList();
+        Map<UUID, BranchInventory> inventories =
+                branchInventoryRepository.findAllByBranchIdAndProduct_IdIn(
+                                branchId,
+                                productIds
+                        ).stream()
+                        .collect(Collectors.toMap(
+                                inventory -> inventory.getProduct().getId(),
+                                Function.identity()
+                        ));
+        List<Product> products = new ArrayList<>();
+        for (OrderItemRepository.BestSellingProduct item : bestSelling) {
+            BranchInventory inventory = inventories.get(item.getProductId());
+            if (inventory == null) {
+                throw new IllegalStateException(
+                        "Không tìm thấy tồn kho cho sản phẩm bán chạy tại chi nhánh"
+                );
+            }
+            products.add(inventory.getProduct());
+        }
+        Map<UUID, ProductPrice> prices =
+                productPricingService.getCurrentPrices(products);
+
+        List<BestSellingProductResponse> responses = new ArrayList<>();
+        for (OrderItemRepository.BestSellingProduct item : bestSelling) {
+            BranchInventory inventory = inventories.get(item.getProductId());
+            Product product = inventory.getProduct();
+            responses.add(new BestSellingProductResponse(
+                    ProductResponse.from(
+                            product,
+                            inventory.getStockQuantity(),
+                            prices.get(product.getId())
+                    ),
+                    item.getQuantitySold()
+            ));
+        }
+        return responses;
     }
 
     @Transactional(readOnly = true)

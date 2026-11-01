@@ -282,7 +282,7 @@ curl http://localhost:8080/api/health
 | Áp dụng thử voucher | `/api/vouchers/apply` | ✅ CUSTOMER; tính theo giỏ và giá hiện tại |
 | Quản lý voucher (admin) | `/api/admin/vouchers` | ✅ Tạo, cập nhật, vô hiệu hóa và lọc |
 | CRUD đợt giảm giá (admin) | `/api/admin/product-discounts` | ✅ Chỉ role `ADMIN` |
-| Sản phẩm bán chạy | Chưa triển khai | ⏳ Chưa làm theo phạm vi hiện tại |
+| Sản phẩm bán chạy theo chi nhánh | `/api/products/best-selling?branchId={branchId}&limit=10` | ✅ Xếp theo số lượng trong đơn đã hoàn tất |
 | Yêu thích sản phẩm | `/api/wishlists` | ✅ Đã code |
 | Giỏ hàng | `/api/cart` | ✅ Đã code |
 | Thông báo khách hàng | `/api/v1/notifications` | ✅ Phân trang, lọc, unread count, đọc/xóa và realtime |
@@ -297,9 +297,11 @@ GET /api/products/search-suggestions?keyword={keyword}&branchId={branchId}&limit
 GET /api/products/category/{categoryId}?branchId={branchId}&includeDescendants=true&page=0&size=20
 GET /api/products/promotions?branchId={branchId}&page=0&size=20
 GET /api/products/daily-fresh?branchId={branchId}&page=0&size=20
+GET /api/products/best-selling?branchId={branchId}&limit=10
 ```
 
 API gợi ý tìm kiếm yêu cầu `keyword` và `branchId`, `limit` mặc định là `3` và chấp nhận từ `1` đến `10`. Kết quả chỉ gồm sản phẩm đang kinh doanh tại chi nhánh, cùng tên, ảnh, giá gốc, giá hiện tại, đơn vị và tên danh mục.
+API sản phẩm bán chạy yêu cầu `branchId`, `limit` mặc định là `10` và chấp nhận từ `1` đến `100`. Kết quả gồm thông tin sản phẩm tại chi nhánh cùng `quantitySold`, được xếp giảm dần theo số lượng bán trong các đơn đã hoàn tất.
 
 ### Voucher
 

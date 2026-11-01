@@ -54,6 +54,12 @@ public interface BranchInventoryRepository extends
     @EntityGraph(attributePaths = {"branch", "product", "product.category"})
     List<BranchInventory> findAllByBranchId(UUID branchId);
 
+    @EntityGraph(attributePaths = {"product", "product.category", "product.brand"})
+    List<BranchInventory> findAllByBranchIdAndProduct_IdIn(
+            UUID branchId,
+            Collection<UUID> productIds
+    );
+
     @EntityGraph(attributePaths = {"product", "product.category"})
     @Query("""
             SELECT inventory

@@ -1,6 +1,7 @@
 package com.haui.UrbanMart.controller;
 
 import com.haui.UrbanMart.dto.response.ApiResponse;
+import com.haui.UrbanMart.dto.response.BestSellingProductResponse;
 import com.haui.UrbanMart.dto.response.ProductResponse;
 import com.haui.UrbanMart.dto.response.ProductSuggestionResponse;
 import com.haui.UrbanMart.exception.BadRequestException;
@@ -77,6 +78,21 @@ public class ProductController {
                         keyword,
                         limit
                 )
+        );
+    }
+
+    @GetMapping("/best-selling")
+    public ApiResponse<List<BestSellingProductResponse>> getBestSellingProducts(
+            @RequestParam UUID branchId,
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+        if (limit < 1 || limit > 100) {
+            throw new BadRequestException("limit phải nằm trong khoảng từ 1 đến 100");
+        }
+
+        return ApiResponse.success(
+                "Lấy danh sách sản phẩm bán chạy thành công",
+                productService.getBestSellingProducts(branchId, limit)
         );
     }
 

@@ -40,10 +40,12 @@ Phải thấy `urbanmart-db`, `urbanmart-redis`, `urbanmart-adminer` ở trạng
 
 Các file migration nằm trong `db/migrations/`, đặt tên `V1`, `V2`... và **phải chạy đúng thứ tự** vì file sau phụ thuộc bảng/kiểu dữ liệu của file trước.
 
+Các migration trong dự án được chạy thủ công bằng `psql`, không tự chạy khi khởi động Spring Boot. Trước khi áp dụng migration, xác định database đã chạy đến phiên bản nào và chỉ chạy các file còn thiếu; không chạy lại file đã áp dụng vì các lệnh `CREATE TABLE` không được thiết kế để chạy lặp.
+
 **Trên macOS/Linux:**
 ```bash
 cd db/migrations
-for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql V8__product_sku_sequence.sql V9__orders_payments_and_promotions.sql V10__inventory_reservations_and_movements.sql V11__backfill_branch_inventory_products.sql V12__branch_inventory_expiry_lots.sql V13__order_handover_confirmation.sql V14__voucher_details_and_conditions.sql V15__notifications.sql; do
+for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql V8__product_sku_sequence.sql V9__orders_payments_and_promotions.sql V10__inventory_reservations_and_movements.sql V11__backfill_branch_inventory_products.sql V12__branch_inventory_expiry_lots.sql V13__order_handover_confirmation.sql V14__voucher_details_and_conditions.sql V15__notifications.sql V16__recipes.sql V17__reviews.sql V18__food_incompatibilities.sql; do
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1 < "$f" || break
 done
 ```
@@ -51,7 +53,7 @@ done
 **Trên Windows (PowerShell)** — `<` không dùng được như Linux, phải dùng `Get-Content`:
 ```powershell
 cd db\migrations
-$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql","V8__product_sku_sequence.sql","V9__orders_payments_and_promotions.sql","V10__inventory_reservations_and_movements.sql","V11__backfill_branch_inventory_products.sql","V12__branch_inventory_expiry_lots.sql","V13__order_handover_confirmation.sql","V14__voucher_details_and_conditions.sql","V15__notifications.sql"
+$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql","V8__product_sku_sequence.sql","V9__orders_payments_and_promotions.sql","V10__inventory_reservations_and_movements.sql","V11__backfill_branch_inventory_products.sql","V12__branch_inventory_expiry_lots.sql","V13__order_handover_confirmation.sql","V14__voucher_details_and_conditions.sql","V15__notifications.sql","V16__recipes.sql","V17__reviews.sql","V18__food_incompatibilities.sql"
 foreach ($f in $files) {
     Get-Content -Raw $f | docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
     if ($LASTEXITCODE -ne 0) { break }
@@ -87,7 +89,7 @@ Kiểm tra các bảng:
 docker exec -it urbanmart-db psql -U urbanmart_user -d urbanmart -c "\dt"
 ```
 
-Các bảng chính gồm: `users`, `addresses`, `branches`, `categories`, `brands`, `products`, `branch_inventory`, `inventory_movements`, `wishlists`, `carts`, `cart_items`, `product_discounts`, `orders`, `order_items`, `payments`, `promotions`, `order_promotions`, `promotion_user_usage`.
+Các bảng chính gồm: `users`, `addresses`, `branches`, `categories`, `brands`, `products`, `branch_inventory`, `inventory_movements`, `wishlists`, `carts`, `cart_items`, `product_discounts`, `orders`, `order_items`, `payments`, `promotions`, `order_promotions`, `promotion_user_usage`, `recipes`, `recipe_ingredients`, `order_reviews`, `product_reviews`, `food_tags`, `product_food_tags`, `food_incompatibilities`.
 
 Migration `V5` thêm ràng buộc để mỗi user chỉ có một giỏ hàng trên mỗi chi nhánh và mỗi sản phẩm chỉ xuất hiện một lần trong cùng giỏ hàng. Nếu database đã có dữ liệu trùng, cần xử lý các bản ghi đó trước khi chạy migration.
 
@@ -98,7 +100,7 @@ Migration `V7` thêm cột `products.is_daily_fresh`, mặc định `false`, đ�
 Migration `V8` tạo sequence `product_sku_seq` dùng để sinh SKU tự động khi tạo sản phẩm và khởi tạo sequence tiếp nối mã SKU `SP...` hiện có.
 
 Migration `V9` tạo schema đơn hàng, chi tiết đơn, payment attempts và voucher/redemption. Migration `V10` bổ sung số lượng giữ/ngưỡng tồn thấp và sổ lịch sử biến động tồn kho. Migration `V13` bổ sung trạng thái chờ khách xác nhận đã nhận hàng và thời điểm bàn giao. Chỉ chạy V9/V10 sau khi database đã áp dụng V1–V8; nếu đã có migration lịch sử riêng cho các bảng này, cần đối chiếu schema thực tế trước khi áp dụng.
-Migration `V14` bổ sung tiêu đề, mô tả và điều kiện danh mục/đơn đầu tiên/ngày đặc biệt cho voucher. Migration `V15` tạo bảng thông báo cùng các index tra cứu theo người dùng, thời gian và trạng thái chưa đọc.
+Migration `V14` bổ sung tiêu đề, mô tả và điều kiện danh mục/đơn đầu tiên/ngày đặc biệt cho voucher. Migration `V15` tạo bảng thông báo cùng các index tra cứu theo người dùng, thời gian và trạng thái chưa đọc. Migration `V16` tạo món ăn và nguyên liệu liên kết sản phẩm; `V17` tạo đánh giá đơn hàng/sản phẩm; `V18` tạo tag thực phẩm và quy tắc kỵ nhau.
 
 Nếu database đã chạy đến V12, áp dụng V13 trước khi khởi động phiên bản code này:
 
@@ -120,6 +122,21 @@ Nếu database đã chạy đến V14, áp dụng V15 trước khi khởi độn
 Get-Content -Raw .\db\migrations\V15__notifications.sql |
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
 ```
+
+Nếu database đã chạy đến V15, áp dụng các migration tuần 9 theo đúng thứ tự trước khi dùng API món ăn, đánh giá và món kỵ nhau:
+
+```powershell
+Get-Content -Raw .\db\migrations\V16__recipes.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+Get-Content -Raw .\db\migrations\V17__reviews.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+Get-Content -Raw .\db\migrations\V18__food_incompatibilities.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+```
+
+Sau V18, quản trị viên cần tạo tag thực phẩm, gán tag cho sản phẩm và tạo quy tắc đã được kiểm chứng thì API kiểm tra kỵ nhau mới trả cảnh báo.
+
+**Trạng thái database dev của phiên làm việc hiện tại:** V16–V18 đã được áp dụng. Đã xác nhận các bảng `recipes`, `recipe_ingredients`, `order_reviews`, `product_reviews`, `food_tags`, `product_food_tags` và `food_incompatibilities` tồn tại. Không chạy lại ba migration này trên database đó.
 
 Nếu database đã chạy V1–V6, chạy các migration V7–V10 trước khi dùng code mới:
 

@@ -60,6 +60,22 @@ public interface BranchInventoryRepository extends
             Collection<UUID> productIds
     );
 
+    /** San pham dang kinh doanh, con hang kha dung tai chi nhanh, thuoc cac danh muc cho truoc. */
+    @EntityGraph(attributePaths = {"product", "product.category"})
+    @Query("""
+            SELECT inventory
+            FROM BranchInventory inventory
+            WHERE inventory.branch.id = :branchId
+              AND inventory.product.status = com.haui.UrbanMart.entity.ProductStatus.ACTIVE
+              AND inventory.product.category.id IN :categoryIds
+              AND inventory.stockQuantity - inventory.reservedQuantity > 0
+            ORDER BY inventory.product.name ASC, inventory.product.id ASC
+            """)
+    List<BranchInventory> findAvailableByBranchAndCategories(
+            @Param("branchId") UUID branchId,
+            @Param("categoryIds") Collection<UUID> categoryIds
+    );
+
     @EntityGraph(attributePaths = {"product", "product.category"})
     @Query("""
             SELECT inventory

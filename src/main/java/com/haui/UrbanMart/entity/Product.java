@@ -11,7 +11,9 @@ import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -55,6 +57,15 @@ public class Product {
 
     @Column(name = "image_url", length = 500)
     private String imageUrl;
+
+    // Tag thuc pham (HAI_SAN, VITAMIN_C...) dung cho quy tac mon an ky nhau - xem V18.
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "product_food_tags",
+            joinColumns = @JoinColumn(name = "product_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_code")
+    )
+    private Set<FoodTag> foodTags = new HashSet<>();
 
     // Cot "embedding VECTOR(768)" CHUA map o day theo dung phase0 - chi them
     // khi lam toi phan AI tim kiem ngu nghia (can dependency rieng cho kieu

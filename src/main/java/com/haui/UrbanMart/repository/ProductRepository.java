@@ -1,5 +1,8 @@
 package com.haui.UrbanMart.repository;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -25,4 +28,10 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     @Query(value = "SELECT nextval('product_sku_seq')", nativeQuery = true)
     Long nextSkuValue();
+
+    @EntityGraph(attributePaths = {"foodTags"})
+    List<Product> findWithFoodTagsByIdIn(Collection<UUID> ids);
+
+    @EntityGraph(attributePaths = {"foodTags"})
+    Optional<Product> findWithFoodTagsById(UUID id);
 }

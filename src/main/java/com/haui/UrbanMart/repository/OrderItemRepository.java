@@ -14,6 +14,8 @@ import java.util.UUID;
 public interface OrderItemRepository extends JpaRepository<OrderItem, UUID> {
     List<OrderItem> findAllByOrder_IdOrderByProduct_IdAsc(UUID orderId);
 
+    boolean existsByOrder_IdAndProduct_Id(UUID orderId, UUID productId);
+
     @Query("""
             SELECT item.product.id AS productId,
                    SUM(item.quantity) AS quantitySold

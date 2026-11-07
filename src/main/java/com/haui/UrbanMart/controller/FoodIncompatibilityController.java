@@ -14,6 +14,7 @@ import com.haui.UrbanMart.dto.response.ProductIncompatibilityResponse;
 import com.haui.UrbanMart.entity.IncompatibilitySeverity;
 import com.haui.UrbanMart.exception.BadRequestException;
 import com.haui.UrbanMart.service.FoodIncompatibilityService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +39,7 @@ public class FoodIncompatibilityController {
 
     private final FoodIncompatibilityService foodIncompatibilityService;
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/api/v1/admin/food-incompatibilities")
     public ResponseEntity<ApiResponse<FoodIncompatibilityResponse>> createRule(
@@ -49,6 +51,7 @@ public class FoodIncompatibilityController {
         ));
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/api/v1/admin/food-incompatibilities")
     public ApiResponse<PageResponse<FoodIncompatibilityResponse>> getRules(
@@ -70,6 +73,7 @@ public class FoodIncompatibilityController {
         );
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/api/v1/admin/food-incompatibilities/{id}")
     public ApiResponse<FoodIncompatibilityResponse> getRule(@PathVariable UUID id) {
@@ -77,6 +81,7 @@ public class FoodIncompatibilityController {
                 foodIncompatibilityService.getRule(id));
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/api/v1/admin/food-incompatibilities/{id}")
     public ApiResponse<FoodIncompatibilityResponse> updateRule(
@@ -87,6 +92,7 @@ public class FoodIncompatibilityController {
                 foodIncompatibilityService.updateRule(id, request));
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/api/v1/admin/food-incompatibilities/{id}")
     public ApiResponse<UUID> deleteRule(@PathVariable UUID id) {
@@ -96,6 +102,7 @@ public class FoodIncompatibilityController {
         );
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/api/v1/admin/food-tags")
     public ApiResponse<java.util.List<FoodTagResponse>> getTags() {
@@ -103,6 +110,7 @@ public class FoodIncompatibilityController {
                 foodIncompatibilityService.getTags());
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/api/v1/admin/food-tags")
     public ResponseEntity<ApiResponse<FoodTagResponse>> createTag(
@@ -114,6 +122,7 @@ public class FoodIncompatibilityController {
         ));
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/api/v1/admin/products/{productId}/food-tags")
     public ApiResponse<ProductFoodTagsResponse> setProductTags(
@@ -124,6 +133,7 @@ public class FoodIncompatibilityController {
                 foodIncompatibilityService.setProductTags(productId, request));
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping("/api/v1/customer/cart/check-incompatibilities")
     public ApiResponse<IncompatibilityCheckResponse> checkProducts(

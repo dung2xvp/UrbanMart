@@ -9,6 +9,7 @@ import com.haui.UrbanMart.dto.response.RecipeSummaryResponse;
 import com.haui.UrbanMart.entity.RecipeCategory;
 import com.haui.UrbanMart.exception.BadRequestException;
 import com.haui.UrbanMart.service.RecipeService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -34,6 +35,7 @@ public class RecipeController {
 
     private final RecipeService recipeService;
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/api/v1/admin/recipes")
     public ResponseEntity<ApiResponse<RecipeAdminResponse>> createRecipe(
@@ -44,6 +46,7 @@ public class RecipeController {
         );
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/api/v1/admin/recipes")
     public ApiResponse<PageResponse<RecipeAdminResponse>> getAdminRecipes(
@@ -62,6 +65,7 @@ public class RecipeController {
         );
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/api/v1/admin/recipes/{id}")
     public ApiResponse<RecipeAdminResponse> getAdminRecipe(@PathVariable UUID id) {
@@ -69,6 +73,7 @@ public class RecipeController {
                 recipeService.getAdminRecipe(id));
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/api/v1/admin/recipes/{id}")
     public ApiResponse<RecipeAdminResponse> updateRecipe(
@@ -79,6 +84,7 @@ public class RecipeController {
                 recipeService.update(id, request));
     }
 
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/api/v1/admin/recipes/{id}")
     public ApiResponse<Void> deactivateRecipe(@PathVariable UUID id) {

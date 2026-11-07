@@ -49,6 +49,20 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
+    public Page<ProductAdminResponse> searchAdminProducts(
+            String keyword,
+            Pageable pageable
+    ) {
+        String normalizedKeyword = keyword.trim();
+        return productRepository.findByNameContainingIgnoreCaseOrSkuContainingIgnoreCase(
+                        normalizedKeyword,
+                        normalizedKeyword,
+                        pageable
+                )
+                .map(ProductAdminResponse::from);
+    }
+
+    @Transactional(readOnly = true)
     public Page<ProductAdminResponse> getAdminProductsByCategory(
             UUID categoryId,
             Pageable pageable

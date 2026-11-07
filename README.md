@@ -136,6 +136,8 @@ Get-Content -Raw .\db\migrations\V18__food_incompatibilities.sql |
 
 Sau V18, quản trị viên cần tạo tag thực phẩm, gán tag cho sản phẩm và tạo quy tắc đã được kiểm chứng thì API kiểm tra kỵ nhau mới trả cảnh báo.
 
+Các API quản trị món ăn/quy tắc kỵ nhau và API kiểm tra giỏ hàng yêu cầu JWT đúng vai trò (`ADMIN` hoặc `CUSTOMER`). Sau khi đăng nhập, lấy `accessToken` trong phản hồi và trong Swagger UI bấm **Authorize**, dán giá trị token (không thêm tiền tố `Bearer`, Swagger UI tự thêm) trước khi gọi các API này. Với Postman/client khác, gửi header `Authorization` với giá trị `Bearer` + dấu cách + accessToken. Các API GET công khai `/api/v1/recipes`, `/api/v1/recipes/{id}/ingredients` và `/api/v1/customer/products/{productId}/incompatibilities` không cần token.
+
 **Trạng thái database dev của phiên làm việc hiện tại:** V16–V18 đã được áp dụng. Đã xác nhận các bảng `recipes`, `recipe_ingredients`, `order_reviews`, `product_reviews`, `food_tags`, `product_food_tags` và `food_incompatibilities` tồn tại. Không chạy lại ba migration này trên database đó.
 
 Nếu database đã chạy V1–V6, chạy các migration V7–V10 trước khi dùng code mới:
@@ -293,6 +295,7 @@ curl http://localhost:8080/api/health
 | Gợi ý tìm kiếm sản phẩm | `/api/products/search-suggestions` | ✅ Tìm theo tên hoặc SKU, trả tối đa 3 sản phẩm mặc định |
 | Sản phẩm theo danh mục | `/api/products/category/{categoryId}` | ✅ Có thể lấy sản phẩm thuộc danh mục con |
 | Sản phẩm theo danh mục (admin) | `/api/admin/products/category/{categoryId}` | ✅ Có phân trang, chỉ lấy danh mục được yêu cầu |
+| Tìm kiếm sản phẩm (admin) | `/api/admin/products/search?keyword={keyword}` | ✅ Tìm theo tên hoặc SKU, có phân trang |
 | Sản phẩm đang giảm giá | `/api/products/promotions` | ✅ Chỉ trả các đợt giảm đang hiệu lực |
 | Sản phẩm hàng ngày | `/api/products/daily-fresh` | ✅ Lọc theo cờ `is_daily_fresh` |
 | Danh sách/chi tiết voucher | `/api/vouchers`, `/api/vouchers/{id}` | ✅ Public; danh sách có phân trang và lọc |
@@ -534,6 +537,12 @@ Danh sách sản phẩm quản trị có thể lọc theo một danh mục cụ 
 
 ```http
 GET /api/admin/products/category/{categoryId}?page=0&size=20
+```
+
+Tìm sản phẩm quản trị theo tên hoặc SKU (không phân biệt chữ hoa/chữ thường):
+
+```http
+GET /api/admin/products/search?keyword={keyword}&page=0&size=20
 ```
 
 ### Quản lý tài khoản (admin)

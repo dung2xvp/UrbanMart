@@ -47,6 +47,28 @@ public class AdminProductController {
         );
     }
 
+    @GetMapping("/search")
+    public ApiResponse<Page<ProductAdminResponse>> searchProducts(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        if (keyword.isBlank()) {
+            throw new BadRequestException("keyword không được để trống");
+        }
+        if (page < 0 || size < 1 || size > 100) {
+            throw new BadRequestException("Page hoặc size không hợp lệ");
+        }
+
+        return ApiResponse.success(
+                "Tìm kiếm sản phẩm thành công",
+                productService.searchAdminProducts(
+                        keyword,
+                        PageRequest.of(page, size, Sort.by("name").ascending())
+                )
+        );
+    }
+
     @GetMapping("/category/{categoryId}")
     public ApiResponse<Page<ProductAdminResponse>> getProductsByCategory(
             @PathVariable UUID categoryId,

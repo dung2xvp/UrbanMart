@@ -22,6 +22,11 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     );
 
     @EntityGraph(attributePaths = {"category", "brand"})
+    Page<Product> findByNameContainingIgnoreCaseOrSkuContainingIgnoreCase(
+            String name, String sku, Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"category", "brand"})
     Page<Product> findByCategory_Id(UUID categoryId, Pageable pageable);
 
     boolean existsByCategory_Id(UUID categoryId);

@@ -334,7 +334,11 @@ public class RecipeService {
         }
         Map<UUID, List<Product>> result = new LinkedHashMap<>();
         for (BranchInventory inventory : branchInventoryRepository
-                .findAvailableByBranchAndCategories(branchId, categoryIds)) {
+                .findAvailableByBranchAndCategories(
+                        branchId,
+                        ProductStatus.ACTIVE,
+                        categoryIds
+                )) {
             Product product = inventory.getProduct();
             result.computeIfAbsent(product.getCategory().getId(), key -> new ArrayList<>())
                     .add(product);
@@ -416,7 +420,7 @@ public class RecipeService {
     }
 
     private static String normalizeKeyword(String keyword) {
-        return keyword == null || keyword.isBlank() ? null : keyword.trim();
+        return keyword == null || keyword.isBlank() ? "" : keyword.trim();
     }
 
     private static String blankToNull(String value) {

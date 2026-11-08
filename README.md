@@ -159,10 +159,11 @@ Chạy sau khi đã áp dụng migration V1–V10. Seed mẫu tạo hai tài kho
 
 Tài khoản đăng nhập mẫu chỉ dùng cho dev/local:
 
-| Chi nhánh | Số điện thoại | Mật khẩu |
+| Vai trò | Số điện thoại | Mật khẩu |
 |---|---|---|
-| Hà Đông | `0900000001` | `Branch@123` |
-| Cầu Giấy | `0900000002` | `Branch@123` |
+| ADMIN | `0900000000` | `Admin@123` |
+| BRANCH — Hà Đông | `0900000001` | `Branch@123` |
+| BRANCH — Cầu Giấy | `0900000002` | `Branch@123` |
 
 **Trên macOS/Linux:**
 ```bash
@@ -172,6 +173,13 @@ docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP
 **Trên Windows (PowerShell):**
 ```powershell
 Get-Content -Raw .\db\seed\seed-sample-data.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+```
+
+Nếu đã chạy seed dữ liệu mẫu trước đó hoặc chỉ cần tạo lại tài khoản ADMIN, chạy riêng lệnh sau (có thể chạy lại để đặt lại mật khẩu test):
+
+```powershell
+Get-Content -Raw .\db\seed\seed-admin.sql |
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
 ```
 

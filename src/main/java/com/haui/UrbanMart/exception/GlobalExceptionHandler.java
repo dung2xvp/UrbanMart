@@ -1,6 +1,8 @@
 package com.haui.UrbanMart.exception;
 
 import com.haui.UrbanMart.dto.response.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -12,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
@@ -55,7 +58,16 @@ public class GlobalExceptionHandler {
     // Bat tat ca exception con lai chua duoc xu ly rieng - tranh lo ra
     // stack trace/thong tin noi bo cho nguoi dung, luon tra ve 500 gon gang.
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
+    public ResponseEntity<ApiResponse<Void>> handleGeneric(
+            Exception ex,
+            HttpServletRequest request
+    ) {
+        log.error(
+                "Unhandled exception while handling {} {}",
+                request.getMethod(),
+                request.getRequestURI(),
+                ex
+        );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("Da co loi xay ra, vui long thu lai sau"));
     }

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.haui.UrbanMart.entity.BranchInventory;
+import com.haui.UrbanMart.entity.ProductStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -66,13 +67,14 @@ public interface BranchInventoryRepository extends
             SELECT inventory
             FROM BranchInventory inventory
             WHERE inventory.branch.id = :branchId
-              AND inventory.product.status = com.haui.UrbanMart.entity.ProductStatus.ACTIVE
+              AND inventory.product.status = :productStatus
               AND inventory.product.category.id IN :categoryIds
               AND inventory.stockQuantity - inventory.reservedQuantity > 0
             ORDER BY inventory.product.name ASC, inventory.product.id ASC
             """)
     List<BranchInventory> findAvailableByBranchAndCategories(
             @Param("branchId") UUID branchId,
+            @Param("productStatus") ProductStatus productStatus,
             @Param("categoryIds") Collection<UUID> categoryIds
     );
 

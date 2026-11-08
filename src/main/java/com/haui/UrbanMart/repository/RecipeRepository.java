@@ -35,7 +35,7 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID> {
             WHERE (:active IS NULL OR recipe.active = :active)
               AND (:category IS NULL OR recipe.category = :category)
               AND (
-                    :keyword IS NULL
+                    :keyword = ''
                     OR LOWER(recipe.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
                     OR LOWER(recipe.slug) LIKE LOWER(CONCAT('%', :keyword, '%'))
                   )

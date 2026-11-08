@@ -4,6 +4,20 @@
 -- qua Flyway. Chay tay 1 lan sau khi da chay migration V1-V6.
 -- ============================================================
 
+-- Tai khoan ADMIN mau chi dung cho moi truong dev/local.
+INSERT INTO users (full_name, phone, password_hash, role)
+VALUES (
+    'UrbanMart Admin',
+    '0900000000',
+    crypt('Admin@123', gen_salt('bf')),
+    'ADMIN'
+)
+ON CONFLICT (phone) DO UPDATE
+SET full_name = EXCLUDED.full_name,
+    password_hash = EXCLUDED.password_hash,
+    role = EXCLUDED.role,
+    status = 'ACTIVE';
+
 DO $$
 DECLARE
     account_hadong_id   UUID;

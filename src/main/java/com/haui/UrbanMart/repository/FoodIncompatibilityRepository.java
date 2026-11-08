@@ -23,7 +23,7 @@ public interface FoodIncompatibilityRepository extends JpaRepository<FoodIncompa
             WHERE (:severity IS NULL OR rule.severity = :severity)
               AND (:active IS NULL OR rule.active = :active)
               AND (
-                    :search IS NULL
+                    :search = ''
                     OR LOWER(rule.tagA) LIKE LOWER(CONCAT('%', :search, '%'))
                     OR LOWER(rule.tagB) LIKE LOWER(CONCAT('%', :search, '%'))
                     OR LOWER(rule.title) LIKE LOWER(CONCAT('%', :search, '%'))

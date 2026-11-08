@@ -53,7 +53,7 @@ public class FoodIncompatibilityService {
             Boolean active,
             Pageable pageable
     ) {
-        String normalized = search == null || search.isBlank() ? null : search.trim();
+        String normalized = search == null || search.isBlank() ? "" : search.trim();
         return ruleRepository.search(normalized, severity, active, pageable)
                 .map(FoodIncompatibilityResponse::from);
     }

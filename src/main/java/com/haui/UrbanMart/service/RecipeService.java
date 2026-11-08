@@ -185,6 +185,7 @@ public class RecipeService {
                     .add(new RecipeIngredientsResponse.Item(
                             product.getId(),
                             product.getName(),
+                            product.getDescription(),
                             product.getImageUrl(),
                             price.price(),
                             price.basePrice(),

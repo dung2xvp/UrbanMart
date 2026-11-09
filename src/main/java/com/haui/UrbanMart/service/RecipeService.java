@@ -128,6 +128,7 @@ public class RecipeService {
                 recipe.getId(),
                 recipe.getName(),
                 recipe.getSlug(),
+                recipe.getDescription(),
                 recipe.getImageUrl(),
                 recipe.getCategory(),
                 recipe.getCategory().getLabel(),
@@ -185,7 +186,6 @@ public class RecipeService {
                     .add(new RecipeIngredientsResponse.Item(
                             product.getId(),
                             product.getName(),
-                            product.getDescription(),
                             product.getImageUrl(),
                             price.price(),
                             price.basePrice(),

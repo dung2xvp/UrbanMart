@@ -8,6 +8,7 @@ public record RecipeSummaryResponse(
         UUID id,
         String name,
         String slug,
+        String description,
         String imageUrl,
         RecipeCategory categoryMonAn,
         String categoryLabel,

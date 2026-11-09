@@ -22,7 +22,6 @@ public record RecipeIngredientsResponse(
     public record Item(
             UUID productId,
             String name,
-            String description,
             String imageUrl,
             /** Gia khach tra hien tai (sau khuyen mai). */
             BigDecimal price,

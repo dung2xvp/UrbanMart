@@ -56,45 +56,45 @@ public class AuthService {
             throw new ConflictException("Email da duoc su dung");
         }
 
-        if (!otpService.canSend(PURPOSE_REGISTER, request.getPhone())) {
+        if (!otpService.canSend(PURPOSE_REGISTER, request.getEmail())) {
             throw new BadRequestException("Vui long doi truoc khi gui lai OTP");
         }
 
-        pendingRegistrationStore.save(request.getPhone(), request);
+        pendingRegistrationStore.save(request.getEmail(), request);
 
-        String otp = otpService.generateAndStore(PURPOSE_REGISTER, request.getPhone());
-        sendOtpEmail(PURPOSE_REGISTER, request.getPhone(), request.getEmail(), otp);
+        String otp = otpService.generateAndStore(PURPOSE_REGISTER, request.getEmail());
+        sendOtpEmail(PURPOSE_REGISTER, request.getEmail(), request.getEmail(), otp);
     }
 
-    public void resendOtp(String phone) {
-        UserCreationRequest pending = pendingRegistrationStore.get(phone);
+    public void resendOtp(String email) {
+        UserCreationRequest pending = pendingRegistrationStore.get(email);
         if (pending == null) {
             throw new BadRequestException("Khong tim thay yeu cau dang ky, vui long dang ky lai");
         }
 
-        if (!otpService.canSend(PURPOSE_REGISTER, phone)) {
+        if (!otpService.canSend(PURPOSE_REGISTER, email)) {
             throw new BadRequestException("Vui lòng đợi trước khi gửi lại OTP");
         }
 
-        String otp = otpService.generateAndStore(PURPOSE_REGISTER, phone);
-        sendOtpEmail(PURPOSE_REGISTER, phone, pending.getEmail(), otp);
+        String otp = otpService.generateAndStore(PURPOSE_REGISTER, email);
+        sendOtpEmail(PURPOSE_REGISTER, email, pending.getEmail(), otp);
     }
 
     public UserResponse verifyRegisterOtp(VerifyOtpRequest request) {
-        boolean valid = otpService.verify(PURPOSE_REGISTER, request.getPhone(), request.getOtp());
+        boolean valid = otpService.verify(PURPOSE_REGISTER, request.getEmail(), request.getOtp());
 
         if (!valid) {
             throw new BadRequestException("OTP khong hop le hoac da het han");
         }
 
-        UserCreationRequest pending = pendingRegistrationStore.get(request.getPhone());
+        UserCreationRequest pending = pendingRegistrationStore.get(request.getEmail());
 
         if (pending == null) {
             throw new BadRequestException("Yeu cau dang ky da het han, vui long dang ky lai");
         }
 
         User created = userService.createRequest(pending);
-        pendingRegistrationStore.delete(request.getPhone());
+        pendingRegistrationStore.delete(request.getEmail());
 
         return UserResponse.from(created);
     }
@@ -174,11 +174,11 @@ public class AuthService {
         }
     }
 
-    private void sendOtpEmail(String purpose, String phone, String email, String otp) {
+    private void sendOtpEmail(String purpose, String otpKeyIdentifier, String email, String otp) {
         try {
             emailService.sendOtp(email, otp);
         } catch (RuntimeException exception) {
-            otpService.clear(purpose, phone);
+            otpService.clear(purpose, otpKeyIdentifier);
             throw exception;
         }
     }

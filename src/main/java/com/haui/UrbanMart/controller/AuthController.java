@@ -27,7 +27,7 @@ public class AuthController {
 
     @PostMapping ("/resend-otp")
     public ApiResponse<Void> resendOtp(@Valid @RequestBody ResendOtpRequest request) {
-        authService.resendOtp(request.getPhone());
+        authService.resendOtp(request.getEmail());
         return ApiResponse.success("Da gui lai OTP", null);
     }
 

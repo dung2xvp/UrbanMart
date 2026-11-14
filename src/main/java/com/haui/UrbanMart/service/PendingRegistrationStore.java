@@ -17,26 +17,26 @@ public class PendingRegistrationStore {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
-    private String key(String phone) {
-        return "auth:pending-registratrion:" + phone;
+    private String key(String email) {
+        return "auth:pending-registratrion:" + email;
     }
 
     @SneakyThrows
-    public void save(String phone, UserCreationRequest request) {
+    public void save(String email, UserCreationRequest request) {
         String json = objectMapper.writeValueAsString(request);
-        redisTemplate.opsForValue().set(key(phone), json, TTL);
+        redisTemplate.opsForValue().set(key(email), json, TTL);
     }
 
     @SneakyThrows
-    public UserCreationRequest get(String phone) {
-        String json = redisTemplate.opsForValue().get(key(phone));
+    public UserCreationRequest get(String email) {
+        String json = redisTemplate.opsForValue().get(key(email));
         if (json == null) {
             return null;
         }
         return objectMapper.readValue(json, UserCreationRequest.class);
     }
 
-    public void delete(String phone) {
-        redisTemplate.delete(key(phone));
+    public void delete(String email) {
+        redisTemplate.delete(key(email));
     }
 }

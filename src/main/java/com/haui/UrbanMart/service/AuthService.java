@@ -161,16 +161,15 @@ public class AuthService {
     }
 
     public void forgotPassword(ForgotPasswordRequest request) {
-        Optional<User> user = userRepository.findByPhone(request.getPhone());
+        Optional<User> user = userRepository.findByEmail(request.getEmail());
 
         if (user.isPresent()
-                && user.get().getEmail() != null
-                && otpService.canSend(PURPOSE_RESET, request.getPhone())) {
+                && otpService.canSend(PURPOSE_RESET, request.getEmail())) {
             String otp = otpService.generateAndStore(
                     PURPOSE_RESET,
-                    request.getPhone()
+                    request.getEmail()
             );
-            sendOtpEmail(PURPOSE_RESET, request.getPhone(), user.get().getEmail(), otp);
+            sendOtpEmail(PURPOSE_RESET, request.getEmail(), user.get().getEmail(), otp);
         }
     }
 
@@ -185,13 +184,13 @@ public class AuthService {
 
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        User user = userRepository.findByPhone(request.getPhone())
+        User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() ->
                         new BadRequestException("OTP khong hop le hoac da het han"));
 
         boolean valid = otpService.verify(
                 PURPOSE_RESET,
-                request.getPhone(),
+                request.getEmail(),
                 request.getOtp()
         );
 

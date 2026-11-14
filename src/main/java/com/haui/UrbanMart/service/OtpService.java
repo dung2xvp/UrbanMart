@@ -15,27 +15,27 @@ public class OtpService {
 
     private final StringRedisTemplate redisTemplate;
 
-    private String otpKey(String purpose, String phone) {
-        return "otp:%s:%s".formatted(purpose, phone);
+    private String otpKey(String purpose, String identifier) {
+        return "otp:%s:%s".formatted(purpose, identifier);
     }
 
-    private String cooldownKey(String purpose, String phone) {
-        return "otp:cooldown:%s:%s".formatted(purpose, phone);
+    private String cooldownKey(String purpose, String identifier) {
+        return "otp:cooldown:%s:%s".formatted(purpose, identifier);
     }
 
-    public boolean canSend(String purpose, String phone) {
-        return Boolean.FALSE.equals(redisTemplate.hasKey(cooldownKey(purpose, phone)));
+    public boolean canSend(String purpose, String identifier) {
+        return Boolean.FALSE.equals(redisTemplate.hasKey(cooldownKey(purpose, identifier)));
     }
 
-    public String generateAndStore(String purpose, String phone) {
+    public String generateAndStore(String purpose, String identifier) {
         String otp = String.valueOf(ThreadLocalRandom.current().nextInt(100_000, 1_000_000));
-        redisTemplate.opsForValue().set(otpKey(purpose, phone), otp, OTP_TTL);
-        redisTemplate.opsForValue().set(cooldownKey(purpose, phone), "1", RESEND_COOLDOWN);
+        redisTemplate.opsForValue().set(otpKey(purpose, identifier), otp, OTP_TTL);
+        redisTemplate.opsForValue().set(cooldownKey(purpose, identifier), "1", RESEND_COOLDOWN);
         return otp;
     }
 
-    public boolean verify(String purpose, String phone, String inputOtp) {
-        String key = otpKey(purpose, phone);
+    public boolean verify(String purpose, String identifier, String inputOtp) {
+        String key = otpKey(purpose, identifier);
         String stored = redisTemplate.opsForValue().get(key);
 
         if (stored == null || !stored.equals(inputOtp)) {
@@ -46,8 +46,8 @@ public class OtpService {
         return true;
     }
 
-    public void clear(String purpose, String phone) {
-        redisTemplate.delete(otpKey(purpose, phone));
-        redisTemplate.delete(cooldownKey(purpose, phone));
+    public void clear(String purpose, String identifier) {
+        redisTemplate.delete(otpKey(purpose, identifier));
+        redisTemplate.delete(cooldownKey(purpose, identifier));
     }
 }

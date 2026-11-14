@@ -27,6 +27,7 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     Optional<User> findForUpdateById(@Param("userId") UUID userId);
 
     Optional<User> findByPhone(String phone);
+    Optional<User> findByEmail(String email);
     boolean existsByPhone (String phone);
     boolean existsByEmail (String email);
     boolean existsByPhoneAndIdNot(String phone, UUID userId);

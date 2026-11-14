@@ -2,8 +2,10 @@ package com.haui.UrbanMart.controller;
 
 import com.haui.UrbanMart.dto.request.CreateOrderRequest;
 import com.haui.UrbanMart.dto.request.CustomerOrderGroup;
+import com.haui.UrbanMart.dto.request.OrderQuoteRequest;
 import com.haui.UrbanMart.dto.response.ApiResponse;
 import com.haui.UrbanMart.dto.response.OrderDetailResponse;
+import com.haui.UrbanMart.dto.response.OrderPricingResponse;
 import com.haui.UrbanMart.dto.response.OrderSummaryResponse;
 import com.haui.UrbanMart.dto.response.PageResponse;
 import com.haui.UrbanMart.exception.BadRequestException;
@@ -76,6 +78,18 @@ public class OrderController {
         return ApiResponse.success(
                 "Xác nhận đã nhận hàng thành công",
                 orderService.confirmOrderReceived(currentUser.getId(), orderId)
+        );
+    }
+
+    @PostMapping("/quote")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ApiResponse<OrderPricingResponse> quoteOrder(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @Valid @RequestBody OrderQuoteRequest request
+    ) {
+        return ApiResponse.success(
+                "Báo giá đơn hàng thành công",
+                orderService.quoteOrder(currentUser.getId(), request)
         );
     }
 

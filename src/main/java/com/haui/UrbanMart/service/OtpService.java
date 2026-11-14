@@ -45,4 +45,9 @@ public class OtpService {
         redisTemplate.delete(key);
         return true;
     }
+
+    public void clear(String purpose, String phone) {
+        redisTemplate.delete(otpKey(purpose, phone));
+        redisTemplate.delete(cooldownKey(purpose, phone));
+    }
 }

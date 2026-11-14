@@ -38,7 +38,7 @@ public class AuthService {
     private final UserService userService;
     private final OtpService otpService;
     private final PendingRegistrationStore pendingRegistrationStore;
-    private final SmsService smsService;
+    private final EmailService emailService;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
@@ -52,7 +52,7 @@ public class AuthService {
             throw new ConflictException("So dien thoai da duoc dang ky");
         }
 
-        if (request.getEmail() != null && userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException("Email da duoc su dung");
         }
 
@@ -63,11 +63,12 @@ public class AuthService {
         pendingRegistrationStore.save(request.getPhone(), request);
 
         String otp = otpService.generateAndStore(PURPOSE_REGISTER, request.getPhone());
-        smsService.sendOtp(request.getPhone(), otp);
+        sendOtpEmail(PURPOSE_REGISTER, request.getPhone(), request.getEmail(), otp);
     }
 
     public void resendOtp(String phone) {
-        if (pendingRegistrationStore.get(phone) == null) {
+        UserCreationRequest pending = pendingRegistrationStore.get(phone);
+        if (pending == null) {
             throw new BadRequestException("Khong tim thay yeu cau dang ky, vui long dang ky lai");
         }
 
@@ -76,7 +77,7 @@ public class AuthService {
         }
 
         String otp = otpService.generateAndStore(PURPOSE_REGISTER, phone);
-        smsService.sendOtp(phone, otp);
+        sendOtpEmail(PURPOSE_REGISTER, phone, pending.getEmail(), otp);
     }
 
     public UserResponse verifyRegisterOtp(VerifyOtpRequest request) {
@@ -163,14 +164,25 @@ public class AuthService {
         Optional<User> user = userRepository.findByPhone(request.getPhone());
 
         if (user.isPresent()
+                && user.get().getEmail() != null
                 && otpService.canSend(PURPOSE_RESET, request.getPhone())) {
             String otp = otpService.generateAndStore(
                     PURPOSE_RESET,
                     request.getPhone()
             );
-            smsService.sendOtp(request.getPhone(), otp);
+            sendOtpEmail(PURPOSE_RESET, request.getPhone(), user.get().getEmail(), otp);
         }
     }
+
+    private void sendOtpEmail(String purpose, String phone, String email, String otp) {
+        try {
+            emailService.sendOtp(email, otp);
+        } catch (RuntimeException exception) {
+            otpService.clear(purpose, phone);
+            throw exception;
+        }
+    }
+
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
         User user = userRepository.findByPhone(request.getPhone())

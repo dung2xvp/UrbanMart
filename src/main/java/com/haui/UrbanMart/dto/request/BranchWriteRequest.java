@@ -32,8 +32,9 @@ public record BranchWriteRequest(
         @Size(max = 20, message = "Số điện thoại tối đa 20 ký tự")
         String phone,
 
-        @DecimalMin(value = "0.01", message = "Bán kính giao hàng phải lớn hơn 0")
-        @Digits(integer = 3, fraction = 2, message = "Bán kính tối đa 3 chữ số nguyên và 2 chữ số thập phân")
+        @DecimalMin(value = "40.00", message = "Bán kính phục vụ cố định là 40 km")
+        @DecimalMax(value = "40.00", message = "Bán kính phục vụ cố định là 40 km")
+        @Digits(integer = 2, fraction = 2, message = "Bán kính phục vụ cố định là 40 km")
         BigDecimal deliveryRadiusKm,
 
         Boolean isWarehouse,

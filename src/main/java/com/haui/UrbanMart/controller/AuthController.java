@@ -22,7 +22,7 @@ public class AuthController {
     @PostMapping ("/register")
     public ApiResponse<Void> register (@Valid @RequestBody UserCreationRequest request) {
         authService.register(request);
-        return ApiResponse.success("Da gui OTP den so dien thoai" + request.getPhone(), null);
+        return ApiResponse.success("Đã gửi OTP đến email " + request.getEmail(), null);
     }
 
     @PostMapping ("/resend-otp")
@@ -53,7 +53,7 @@ public class AuthController {
             @Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);
         return ApiResponse.success(
-                "Nếu số điện thoại đã đăng ký, OTP sẽ được gửi đến số điện thoại đó",
+                "Nếu tài khoản tồn tại, OTP sẽ được gửi đến email đã đăng ký",
                 null
         );
     }

@@ -65,11 +65,11 @@ BEGIN
     RETURNING id INTO account_caugiay_id;
 
     INSERT INTO branches (account_id, name, address, lat, lng, delivery_radius_km, is_warehouse, phone, opening_hours, status)
-    VALUES (account_hadong_id, 'UrbanMart Ha Dong', 'So 339 Quoc lo 70B, Ha Dong, Ha Noi', 20.9721, 105.7797, 8, false, '02412345678', '{"mon_sun":"7:00-22:00"}', 'ACTIVE')
+    VALUES (account_hadong_id, 'UrbanMart Ha Dong', 'So 339 Quoc lo 70B, Ha Dong, Ha Noi', 20.9721, 105.7797, 40, false, '02412345678', '{"mon_sun":"7:00-22:00"}', 'ACTIVE')
     RETURNING id INTO branch_hadong_id;
 
     INSERT INTO branches (account_id, name, address, lat, lng, delivery_radius_km, is_warehouse, phone, opening_hours, status)
-    VALUES (account_caugiay_id, 'UrbanMart Cau Giay', 'So 10 Nguyen Trai, Cau Giay, Ha Noi', 21.0333, 105.7942, 6, false, '02423456789', '{"mon_sun":"7:00-22:00"}', 'ACTIVE')
+    VALUES (account_caugiay_id, 'UrbanMart Cau Giay', 'So 10 Nguyen Trai, Cau Giay, Ha Noi', 21.0333, 105.7942, 40, false, '02423456789', '{"mon_sun":"7:00-22:00"}', 'ACTIVE')
     RETURNING id INTO branch_caugiay_id;
 
     -- ---------- DANH MUC (cay 3 cap, giong vi du JSON API ban dua) ----------

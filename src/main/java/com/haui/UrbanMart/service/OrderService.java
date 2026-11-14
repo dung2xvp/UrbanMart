@@ -105,6 +105,7 @@ public class OrderService {
         if (branch.getStatus() != BranchStatus.ACTIVE || branch.isWarehouse()) {
             throw new BadRequestException("Chi nhánh không nhận đơn hàng");
         }
+        double deliveryDistanceKm = resolveQuoteDeliveryDistance(customerId, branch, request);
         Cart cart = cartRepository.findByUserIdAndBranchId(customerId, branch.getId())
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy giỏ hàng"));
         List<CartItem> cartItems = cartItemRepository.findAllByCartId(cart.getId());
@@ -119,7 +120,9 @@ public class OrderService {
                         cartPricing.categorySubtotals(),
                         false
                 );
-        BigDecimal shippingFee = BigDecimal.ZERO.setScale(2);
+        BigDecimal shippingFee = request.deliveryType() == DeliveryType.DELIVERY
+                ? ShippingFeeCalculator.calculateFee(subtotal, deliveryDistanceKm)
+                : BigDecimal.ZERO.setScale(2);
         BigDecimal total = subtotal.add(shippingFee).subtract(promotionDiscount.amount());
         return new OrderPricingResponse(
                 branch.getId(),
@@ -275,6 +278,21 @@ public class OrderService {
         }
 
         Address address = resolveAddress(customerId,request);
+        double deliveryDistanceKm = 0;
+        if (request.getDeliveryType() == DeliveryType.DELIVERY) {
+            BigDecimal destinationLat = address == null
+                    ? request.getShippingLat() : address.getLat();
+            BigDecimal destinationLng = address == null
+                    ? request.getShippingLng() : address.getLng();
+            deliveryDistanceKm = ShippingFeeCalculator.distanceKm(
+                    branch, destinationLat, destinationLng
+            );
+            if (deliveryDistanceKm > ShippingFeeCalculator.MAX_DELIVERY_RADIUS_KM.doubleValue()) {
+                throw new BadRequestException(
+                        "Địa chỉ giao hàng nằm ngoài phạm vi phục vụ 40 km"
+                );
+            }
+        }
 
         List<Product> products = cartItems.stream()
                 .map(CartItem::getProduct)
@@ -356,7 +374,9 @@ public class OrderService {
         }
 
         order.setSubtotal(subtotal);
-        order.setShippingFee(BigDecimal.ZERO);
+        order.setShippingFee(request.getDeliveryType() == DeliveryType.DELIVERY
+                ? ShippingFeeCalculator.calculateFee(subtotal, deliveryDistanceKm)
+                : BigDecimal.ZERO.setScale(2));
         PromotionService.PromotionDiscount promotionDiscount =
                 promotionService.calculateDiscount(
                         branch.getId(),
@@ -482,6 +502,48 @@ public class OrderService {
         }
 
         return null;
+    }
+
+    private double resolveQuoteDeliveryDistance(
+            UUID customerId,
+            Branch branch,
+            OrderQuoteRequest request
+    ) {
+        boolean hasCoordinates = request.shippingLat() != null || request.shippingLng() != null;
+        if (request.deliveryType() == DeliveryType.PICKUP) {
+            if (request.addressId() != null || hasCoordinates) {
+                throw new BadRequestException(
+                        "Đơn nhận tại chi nhánh không được có địa chỉ giao hàng"
+                );
+            }
+            return 0;
+        }
+        if (request.deliveryType() != DeliveryType.DELIVERY) {
+            throw new BadRequestException("Hình thức nhận hàng không hợp lệ");
+        }
+
+        if (request.addressId() != null) {
+            if (hasCoordinates) {
+                throw new BadRequestException(
+                        "Chỉ chọn địa chỉ đã lưu hoặc nhập tọa độ mới"
+                );
+            }
+            Address address = addressRepository
+                    .findByIdAndUserId(request.addressId(), customerId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Không tìm thấy địa chỉ của tài khoản"
+                    ));
+            return ShippingFeeCalculator.distanceKm(
+                    branch, address.getLat(), address.getLng()
+            );
+        }
+
+        if (!hasCoordinates || request.shippingLat() == null || request.shippingLng() == null) {
+            throw new BadRequestException("Giao hàng cần tọa độ nhận hàng");
+        }
+        return ShippingFeeCalculator.distanceKm(
+                branch, request.shippingLat(), request.shippingLng()
+        );
     }
 
     private String resolveShippingAddress(

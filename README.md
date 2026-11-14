@@ -45,7 +45,7 @@ Các migration trong dự án được chạy thủ công bằng `psql`, không 
 **Trên macOS/Linux:**
 ```bash
 cd db/migrations
-for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql V8__product_sku_sequence.sql V9__orders_payments_and_promotions.sql V10__inventory_reservations_and_movements.sql V11__backfill_branch_inventory_products.sql V12__branch_inventory_expiry_lots.sql V13__order_handover_confirmation.sql V14__voucher_details_and_conditions.sql V15__notifications.sql V16__recipes.sql V17__reviews.sql V18__food_incompatibilities.sql; do
+for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql V8__product_sku_sequence.sql V9__orders_payments_and_promotions.sql V10__inventory_reservations_and_movements.sql V11__backfill_branch_inventory_products.sql V12__branch_inventory_expiry_lots.sql V13__order_handover_confirmation.sql V14__voucher_details_and_conditions.sql V15__notifications.sql V16__recipes.sql V17__reviews.sql V18__food_incompatibilities.sql V19__fixed_branch_delivery_radius.sql; do
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1 < "$f" || break
 done
 ```
@@ -53,11 +53,18 @@ done
 **Trên Windows (PowerShell)** — `<` không dùng được như Linux, phải dùng `Get-Content`:
 ```powershell
 cd db\migrations
-$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql","V8__product_sku_sequence.sql","V9__orders_payments_and_promotions.sql","V10__inventory_reservations_and_movements.sql","V11__backfill_branch_inventory_products.sql","V12__branch_inventory_expiry_lots.sql","V13__order_handover_confirmation.sql","V14__voucher_details_and_conditions.sql","V15__notifications.sql","V16__recipes.sql","V17__reviews.sql","V18__food_incompatibilities.sql"
+$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql","V8__product_sku_sequence.sql","V9__orders_payments_and_promotions.sql","V10__inventory_reservations_and_movements.sql","V11__backfill_branch_inventory_products.sql","V12__branch_inventory_expiry_lots.sql","V13__order_handover_confirmation.sql","V14__voucher_details_and_conditions.sql","V15__notifications.sql","V16__recipes.sql","V17__reviews.sql","V18__food_incompatibilities.sql","V19__fixed_branch_delivery_radius.sql"
 foreach ($f in $files) {
     Get-Content -Raw $f | docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
     if ($LASTEXITCODE -ne 0) { break }
 }
+```
+
+Nếu database đã chạy đến V18, chỉ áp dụng V19 để chuyển tất cả chi nhánh hiện có sang bán kính cố định 40 km:
+
+```powershell
+Get-Content -Raw .\db\migrations\V19__fixed_branch_delivery_radius.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
 ```
 
 Nếu database đã chạy V1–V5, chỉ chạy migration mới:
@@ -349,7 +356,7 @@ Request tạo/cập nhật nhận `code`, `title`, `description`, `discountType`
 
 Khi gọi danh sách voucher kèm `branchId`, khách hàng cần đăng nhập; response thêm `usedByCurrentUser`, `userUsageCount`, `status`, `canApply` và `ineligibilityReasons`, được tính theo giỏ hàng hiện tại tại chi nhánh đó. `status` gồm `AVAILABLE`, `NOT_ELIGIBLE`, `USED` (đã đạt giới hạn lượt dùng cá nhân) và `EXPIRED`; lý do không áp dụng gồm `EMPTY_CART`, `BRANCH_MISMATCH`, `NOT_STARTED`, `EXPIRED`, `MIN_ORDER_VALUE`, `GLOBAL_USAGE_LIMIT_REACHED`, `USER_USAGE_LIMIT_REACHED`, `FIRST_ORDER_ONLY`, `SPECIAL_DAY_ONLY` và `NO_APPLICABLE_PRODUCTS`. Dùng `isAvailableOnly=false` để API trả cả voucher hết hạn, chưa đến ngày bắt đầu hoặc đã hết lượt toàn hệ thống. `usedByCurrentUser` vẫn có thể là `true` trong khi `canApply` là `true` nếu voucher cho phép người dùng dùng nhiều lần và chưa hết lượt. Không truyền `branchId` thì danh sách giữ response công khai hiện tại, các trường trạng thái cá nhân không có giá trị.
 
-`POST /api/vouchers/apply` nhận `{ "code": "...", "branchId": "..." }`; backend lấy giỏ hàng và giá hiện tại, không nhận subtotal từ client. API chỉ báo giá, không giữ lượt sử dụng. Khi tạo đơn, voucher được kiểm tra lại và lượt dùng được ghi nhận trong cùng transaction. Giá sale áp dụng cho toàn bộ số lượng; voucher tính tiếp trên giá sau sale. Với voucher giới hạn danh mục, khoản giảm chỉ tính trên sản phẩm thuộc danh mục được chọn và các danh mục con; ngưỡng đơn tối thiểu vẫn so với tổng tiền hàng sau sale, trước voucher. Ngày đặc biệt được tính theo múi giờ Việt Nam.
+`POST /api/vouchers/apply` nhận `code`, `branchId`, `deliveryType` (`DELIVERY` hoặc `PICKUP`) và, với giao hàng, `addressId` hoặc cặp `shippingLat`/`shippingLng`. Backend lấy giỏ hàng và giá hiện tại, không nhận subtotal từ client. Khoảng cách tính theo đường chim bay từ tọa độ chi nhánh; mọi chi nhánh phục vụ tối đa 40 km. Phí giao hàng theo giá trị hàng trước voucher: dưới 300.000đ lần lượt 10.000/20.000/30.000/40.000/40.000đ ở các dải 0–3, >3–10, >10–20, >20–30, >30–40 km; từ 300.000đ đến 500.000đ lần lượt miễn phí/10.000/15.000/20.000/20.000đ; trên 500.000đ miễn phí đến 30 km, 20.000đ ở dải >30–40 km. Đơn tự lấy không tính phí. API chỉ báo giá, không giữ lượt sử dụng. Khi tạo đơn, voucher được kiểm tra lại và lượt dùng được ghi nhận trong cùng transaction. Giá sale áp dụng cho toàn bộ số lượng; voucher tính tiếp trên giá sau sale. Với voucher giới hạn danh mục, khoản giảm chỉ tính trên sản phẩm thuộc danh mục được chọn và các danh mục con; ngưỡng đơn tối thiểu vẫn so với tổng tiền hàng sau sale, trước voucher. Ngày đặc biệt được tính theo múi giờ Việt Nam.
 
 Danh sách chung, theo danh mục, khuyến mãi và hàng ngày hỗ trợ:
 
@@ -437,13 +444,15 @@ POST  /api/orders
 
 Checkout chấp nhận `promotionCode` tùy chọn và chỉ nhận `receiveFrom`/`receiveTo` cho đơn `PICKUP`. Hai thời điểm phải cùng được truyền hoặc cùng bỏ trống; nếu có thì phải nằm trong tương lai và thời gian kết thúc sau thời gian bắt đầu. Đây là giờ khách dự kiến đến nhận, không phải slot được giữ chỗ; bỏ trống nghĩa là nhận sớm nhất. Đơn `DELIVERY` không nhận giờ giao do khách chọn.
 
-Có thể gọi `POST /api/orders/quote` trước khi đặt để kiểm tra voucher và xem `subtotal`, `discountAmount`, `totalAmount`; API báo giá không giữ lượt voucher. Khi `POST /api/orders`, backend tính lại giá và kiểm tra/ghi nhận lượt voucher nguyên tử trong giao dịch tạo đơn, nên tổng tiền từ báo giá chỉ mang tính tham khảo. Mỗi đơn chỉ áp dụng một voucher. Voucher được hoàn lại lượt nếu chi nhánh hủy đơn trước khi giao/khách đến nhận.
+Có thể gọi `POST /api/orders/quote` trước khi đặt để xem `subtotal`, `shippingFee`, `discountAmount` và `totalAmount`; `promotionCode` là tùy chọn. Gửi `deliveryType` và, với `DELIVERY`, `addressId` hoặc cặp `shippingLat`/`shippingLng`. API báo giá không giữ lượt voucher. Khi `POST /api/orders`, backend tính lại giá và kiểm tra/ghi nhận lượt voucher nguyên tử trong giao dịch tạo đơn, nên tổng tiền từ báo giá chỉ mang tính tham khảo. Mỗi đơn chỉ áp dụng một voucher. Voucher được hoàn lại lượt nếu chi nhánh hủy đơn trước khi giao/khách đến nhận.
 
 Ví dụ request báo giá:
 
 ```json
 {
   "branchId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "deliveryType": "DELIVERY",
+  "addressId": "4c5b4df4-f213-4c5a-90fb-81ab8e55d813",
   "promotionCode": "WELCOME10"
 }
 ```

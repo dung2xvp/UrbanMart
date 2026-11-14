@@ -21,7 +21,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class BranchAdminService {
 
-    private static final BigDecimal DEFAULT_DELIVERY_RADIUS_KM = BigDecimal.valueOf(5);
+    private static final BigDecimal DEFAULT_DELIVERY_RADIUS_KM = BigDecimal.valueOf(40);
 
     private final BranchRepository branchRepository;
     private final BranchInventoryRepository branchInventoryRepository;
@@ -79,9 +79,7 @@ public class BranchAdminService {
         branch.setPhone(request.phone() == null || request.phone().isBlank()
                 ? null
                 : request.phone().trim());
-        branch.setDeliveryRadiusKm(request.deliveryRadiusKm() == null
-                ? DEFAULT_DELIVERY_RADIUS_KM
-                : request.deliveryRadiusKm());
+        branch.setDeliveryRadiusKm(DEFAULT_DELIVERY_RADIUS_KM);
         branch.setWarehouse(Boolean.TRUE.equals(request.isWarehouse()));
         branch.setOpeningHours(request.openingHours());
         if (request.status() != null) {

@@ -19,6 +19,7 @@ public class UserCreationRequest {
     @Pattern (regexp = "^0\\d{9}$", message = "Số điện thoại không hợp lệ")
     private String phone;
 
+    @NotBlank(message = "Email không được để trống")
     @Email(message = "Email không hợp lệ")
     private String email;
 

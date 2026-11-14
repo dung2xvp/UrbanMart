@@ -88,13 +88,21 @@ public class VoucherController {
     ) {
         var quote = orderService.quoteOrder(
                 currentUser.getId(),
-                new OrderQuoteRequest(request.branchId(), request.code())
+                new OrderQuoteRequest(
+                        request.branchId(),
+                        request.code(),
+                        request.deliveryType(),
+                        request.addressId(),
+                        request.shippingLat(),
+                        request.shippingLng()
+                )
         );
         return ApiResponse.success(
                 "Áp dụng voucher thành công",
                 new VoucherApplyResponse(
                         quote.promotionCode(),
                         quote.discountAmount(),
+                        quote.shippingFee(),
                         quote.totalAmount()
                 )
         );

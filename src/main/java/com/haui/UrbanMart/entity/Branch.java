@@ -42,7 +42,7 @@ public class Branch {
     private BigDecimal lng;
 
     @Column(name = "delivery_radius_km", precision = 5, scale = 2)
-    private BigDecimal deliveryRadiusKm = BigDecimal.valueOf(5);
+    private BigDecimal deliveryRadiusKm = BigDecimal.valueOf(40);
 
     @Column(name = "is_warehouse", nullable = false)
     private boolean isWarehouse = false;

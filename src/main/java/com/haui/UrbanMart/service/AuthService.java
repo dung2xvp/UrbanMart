@@ -78,6 +78,7 @@ public class AuthService {
 
         String otp = otpService.generateAndStore(PURPOSE_REGISTER, email);
         sendOtpEmail(PURPOSE_REGISTER, email, pending.getEmail(), otp);
+        pendingRegistrationStore.save(email, pending);
     }
 
     public UserResponse verifyRegisterOtp(VerifyOtpRequest request) {

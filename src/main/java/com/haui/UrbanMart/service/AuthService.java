@@ -49,15 +49,15 @@ public class AuthService {
         }
 
         if (userRepository.existsByPhone(request.getPhone())) {
-            throw new ConflictException("So dien thoai da duoc dang ky");
+            throw new ConflictException("Số điện thoại này đã được đăng ký");
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new ConflictException("Email da duoc su dung");
+            throw new ConflictException("Email này đã được sử dụng");
         }
 
         if (!otpService.canSend(PURPOSE_REGISTER, request.getEmail())) {
-            throw new BadRequestException("Vui long doi truoc khi gui lai OTP");
+            throw new BadRequestException("Vui lòng đợi trước khi gửi lại mã OTP");
         }
 
         pendingRegistrationStore.save(request.getEmail(), request);
@@ -69,7 +69,7 @@ public class AuthService {
     public void resendOtp(String email) {
         UserCreationRequest pending = pendingRegistrationStore.get(email);
         if (pending == null) {
-            throw new BadRequestException("Khong tim thay yeu cau dang ky, vui long dang ky lai");
+            throw new BadRequestException("Không tìm thấy yêu cầu đăng ký hoặc yêu cầu đã hết hạn. Vui lòng đăng ký lại");
         }
 
         if (!otpService.canSend(PURPOSE_REGISTER, email)) {
@@ -85,13 +85,13 @@ public class AuthService {
         boolean valid = otpService.verify(PURPOSE_REGISTER, request.getEmail(), request.getOtp());
 
         if (!valid) {
-            throw new BadRequestException("OTP khong hop le hoac da het han");
+            throw new BadRequestException("Mã OTP không hợp lệ hoặc đã hết hạn");
         }
 
         UserCreationRequest pending = pendingRegistrationStore.get(request.getEmail());
 
         if (pending == null) {
-            throw new BadRequestException("Yeu cau dang ky da het han, vui long dang ky lai");
+            throw new BadRequestException("Yêu cầu đăng ký đã hết hạn. Vui lòng đăng ký lại");
         }
 
         User created = userService.createRequest(pending);
@@ -162,16 +162,18 @@ public class AuthService {
     }
 
     public void forgotPassword(ForgotPasswordRequest request) {
-        Optional<User> user = userRepository.findByEmail(request.getEmail());
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("Email chưa được đăng ký"));
 
-        if (user.isPresent()
-                && otpService.canSend(PURPOSE_RESET, request.getEmail())) {
-            String otp = otpService.generateAndStore(
-                    PURPOSE_RESET,
-                    request.getEmail()
-            );
-            sendOtpEmail(PURPOSE_RESET, request.getEmail(), user.get().getEmail(), otp);
+        if (!otpService.canSend(PURPOSE_RESET, request.getEmail())) {
+            throw new BadRequestException("Vui lòng đợi trước khi gửi lại OTP");
         }
+
+        String otp = otpService.generateAndStore(
+                PURPOSE_RESET,
+                request.getEmail()
+        );
+        sendOtpEmail(PURPOSE_RESET, request.getEmail(), user.getEmail(), otp);
     }
 
     private void sendOtpEmail(String purpose, String otpKeyIdentifier, String email, String otp) {
@@ -187,7 +189,7 @@ public class AuthService {
     public void resetPassword(ResetPasswordRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() ->
-                        new BadRequestException("OTP khong hop le hoac da het han"));
+                        new BadRequestException("Mã OTP không hợp lệ hoặc đã hết hạn"));
 
         boolean valid = otpService.verify(
                 PURPOSE_RESET,
@@ -196,7 +198,7 @@ public class AuthService {
         );
 
         if (!valid) {
-            throw new BadRequestException("OTP khong hop le hoac da het han");
+            throw new BadRequestException("Mã OTP không hợp lệ hoặc đã hết hạn");
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));

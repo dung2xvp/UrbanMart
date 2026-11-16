@@ -65,7 +65,7 @@ public class ProductController {
             @RequestParam(defaultValue = "3") int limit
     ) {
         if (keyword.isBlank()) {
-            throw new BadRequestException("keyword không được để trống");
+            throw new BadRequestException("Từ khóa tìm kiếm không được để trống");
         }
         if (limit < 1 || limit > 10) {
             throw new BadRequestException("limit phải nằm trong khoảng từ 1 đến 10");
@@ -208,7 +208,9 @@ public class ProductController {
             BigDecimal maxPrice
     ) {
         if (page < 0 || size < 1 || size > 100) {
-            throw new BadRequestException("Page hoac size khong hop le");
+            throw new BadRequestException(
+                    "Số trang phải từ 0 trở lên và kích thước trang phải từ 1 đến 100"
+            );
         }
         if (minPrice != null && minPrice.signum() < 0
                 || maxPrice != null && maxPrice.signum() < 0) {

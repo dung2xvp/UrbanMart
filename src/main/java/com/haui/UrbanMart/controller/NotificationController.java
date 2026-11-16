@@ -42,7 +42,9 @@ public class NotificationController {
             @RequestParam(defaultValue = "10") int size
     ) {
         if (page < 0 || size < 1 || size > 100) {
-            throw new BadRequestException("Page hoặc size không hợp lệ");
+            throw new BadRequestException(
+                    "Số trang phải từ 0 trở lên và kích thước trang phải từ 1 đến 100"
+            );
         }
         return ApiResponse.success(
                 "Lấy danh sách thông báo thành công",

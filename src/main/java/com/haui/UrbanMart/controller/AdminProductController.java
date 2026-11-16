@@ -38,7 +38,9 @@ public class AdminProductController {
             @RequestParam(defaultValue = "20") int size
     ) {
         if (page < 0 || size < 1 || size > 100) {
-            throw new BadRequestException("Page hoặc size không hợp lệ");
+            throw new BadRequestException(
+                    "Số trang phải từ 0 trở lên và kích thước trang phải từ 1 đến 100"
+            );
         }
 
         return ApiResponse.success(
@@ -54,10 +56,12 @@ public class AdminProductController {
             @RequestParam(defaultValue = "20") int size
     ) {
         if (keyword.isBlank()) {
-            throw new BadRequestException("keyword không được để trống");
+            throw new BadRequestException("Từ khóa tìm kiếm không được để trống");
         }
         if (page < 0 || size < 1 || size > 100) {
-            throw new BadRequestException("Page hoặc size không hợp lệ");
+            throw new BadRequestException(
+                    "Số trang phải từ 0 trở lên và kích thước trang phải từ 1 đến 100"
+            );
         }
 
         return ApiResponse.success(
@@ -76,7 +80,9 @@ public class AdminProductController {
             @RequestParam(defaultValue = "20") int size
     ) {
         if (page < 0 || size < 1 || size > 100) {
-            throw new BadRequestException("Page hoặc size không hợp lệ");
+            throw new BadRequestException(
+                    "Số trang phải từ 0 trở lên và kích thước trang phải từ 1 đến 100"
+            );
         }
 
         return ApiResponse.success(

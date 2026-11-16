@@ -45,13 +45,13 @@ public class UserService {
 
     public UserProfileResponse getProfile(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay user"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
         return UserProfileResponse.from(user);
     }
 
     public UserProfileResponse updateProfile(UUID userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay user"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
         if (request.getFullName() != null) {
             user.setFullName(request.getFullName());
@@ -59,7 +59,7 @@ public class UserService {
         if (request.getEmail() != null) {
             if (!request.getEmail().equals(user.getEmail())
                     && userRepository.existsByEmail(request.getEmail())) {
-                throw new ConflictException("Email da duoc su dung");
+                throw new ConflictException("Email này đã được sử dụng");
             }
             user.setEmail(request.getEmail());
         }

@@ -244,7 +244,7 @@ public class ReviewSearchRepository {
             case ZonedDateTime zonedDateTime -> zonedDateTime.toOffsetDateTime();
             case Timestamp timestamp -> timestamp.toInstant().atOffset(ZoneOffset.UTC);
             default -> throw new IllegalStateException(
-                    "Kieu thoi gian khong ho tro: " + value.getClass()
+                    "Kiểu thời gian lọc không được hỗ trợ: " + value.getClass()
             );
         };
     }

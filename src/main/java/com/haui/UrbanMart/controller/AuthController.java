@@ -53,7 +53,7 @@ public class AuthController {
             @Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);
         return ApiResponse.success(
-                "Nếu tài khoản tồn tại, OTP sẽ được gửi đến email đã đăng ký",
+                "OTP đặt lại mật khẩu đã được gửi đến email đã đăng ký",
                 null
         );
     }

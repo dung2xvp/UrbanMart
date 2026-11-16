@@ -29,7 +29,7 @@ public class BranchService {
         validateCoordinates(lat, lng);
 
         if (radiusKm == null || radiusKm.signum() <= 0) {
-            throw new BadRequestException("Ban kinh tim kiem phai lon hon 0");
+            throw new BadRequestException("Bán kính tìm kiếm phải lớn hơn 0 km");
         }
 
         return branchRepository.findNearby(lat, lng, radiusKm)
@@ -59,12 +59,12 @@ public class BranchService {
     private void validateCoordinates(BigDecimal lat, BigDecimal lng) {
         if (lat == null || lat.compareTo(MIN_LATITUDE) < 0
                 || lat.compareTo(MAX_LATITUDE) > 0) {
-            throw new BadRequestException("Vi do phai nam trong khoang -90 den 90");
+            throw new BadRequestException("Vĩ độ phải nằm trong khoảng từ -90 đến 90");
         }
 
         if (lng == null || lng.compareTo(MIN_LONGITUDE) < 0
                 || lng.compareTo(MAX_LONGITUDE) > 0) {
-            throw new BadRequestException("Kinh do phai nam trong khoang -180 den 180");
+            throw new BadRequestException("Kinh độ phải nằm trong khoảng từ -180 đến 180");
         }
     }
 }

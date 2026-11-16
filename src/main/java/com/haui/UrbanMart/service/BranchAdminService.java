@@ -4,10 +4,13 @@ import com.haui.UrbanMart.dto.request.BranchWriteRequest;
 import com.haui.UrbanMart.dto.response.BranchAdminResponse;
 import com.haui.UrbanMart.entity.Branch;
 import com.haui.UrbanMart.entity.BranchStatus;
+import com.haui.UrbanMart.entity.OrderStatus;
 import com.haui.UrbanMart.exception.BadRequestException;
+import com.haui.UrbanMart.exception.ConflictException;
 import com.haui.UrbanMart.exception.ResourceNotFoundException;
 import com.haui.UrbanMart.repository.BranchInventoryRepository;
 import com.haui.UrbanMart.repository.BranchRepository;
+import com.haui.UrbanMart.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -25,6 +29,16 @@ public class BranchAdminService {
 
     private final BranchRepository branchRepository;
     private final BranchInventoryRepository branchInventoryRepository;
+    private final OrderRepository orderRepository;
+
+    private static final Set<OrderStatus> ORDERS_REQUIRING_ACTION = Set.of(
+            OrderStatus.PENDING,
+            OrderStatus.PROCESSING,
+            OrderStatus.SHIPPING,
+            OrderStatus.READY_FOR_PICKUP,
+            OrderStatus.DELIVERY_FAILED,
+            OrderStatus.DELIVERED_PENDING_CONFIRMATION
+    );
 
     @Transactional(readOnly = true)
     public Page<BranchAdminResponse> getBranches(Pageable pageable) {
@@ -63,6 +77,11 @@ public class BranchAdminService {
     @Transactional
     public void closeBranch(UUID id) {
         Branch branch = findBranch(id);
+        if (orderRepository.existsByBranch_IdAndStatusIn(id, ORDERS_REQUIRING_ACTION)) {
+            throw new ConflictException(
+                    "Không thể xóa chi nhánh đang có đơn hàng cần xử lý"
+            );
+        }
         branch.setStatus(BranchStatus.CLOSED_TEMP);
     }
 

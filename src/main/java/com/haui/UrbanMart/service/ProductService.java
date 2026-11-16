@@ -422,12 +422,12 @@ public class ProductService {
     private void validateSellingBranch(UUID branchId) {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Khong tim thay chi nhanh"
+                        "Không tìm thấy chi nhánh"
                 ));
 
         if (branch.getStatus() != BranchStatus.ACTIVE || branch.isWarehouse()) {
             throw new ResourceNotFoundException(
-                    "Khong tim thay chi nhanh dang ban hang"
+                    "Không tìm thấy chi nhánh đang hoạt động bán hàng"
             );
         }
     }

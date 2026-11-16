@@ -48,7 +48,7 @@ public class NotificationWebSocketInterceptor implements ChannelInterceptor {
         } else if (accessor.getCommand() == StompCommand.SUBSCRIBE) {
             authorizeSubscription(accessor);
         } else if (accessor.getCommand() == StompCommand.SEND) {
-            throw new AccessDeniedException("Client không được gửi message qua WebSocket");
+            throw new AccessDeniedException("Không được phép gửi dữ liệu đến máy chủ qua kết nối WebSocket");
         }
         return message;
     }
@@ -56,7 +56,7 @@ public class NotificationWebSocketInterceptor implements ChannelInterceptor {
     private void authenticate(StompHeaderAccessor accessor) {
         String authorization = accessor.getFirstNativeHeader(HttpHeaders.AUTHORIZATION);
         if (authorization == null || !authorization.startsWith("Bearer ")) {
-            throw new AccessDeniedException("Thiếu access token cho WebSocket");
+            throw new AccessDeniedException("Thiếu mã xác thực để kết nối WebSocket");
         }
 
         try {
@@ -82,7 +82,7 @@ public class NotificationWebSocketInterceptor implements ChannelInterceptor {
                     List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
             ));
         } catch (JwtException | IllegalArgumentException exception) {
-            throw new AccessDeniedException("Access token WebSocket không hợp lệ");
+            throw new AccessDeniedException("Mã xác thực WebSocket không hợp lệ hoặc đã hết hạn");
         }
     }
 

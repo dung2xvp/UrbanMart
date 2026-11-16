@@ -100,7 +100,7 @@ public class CartService {
                                    UpdateCartItemRequest request) {
         CartItem item = cartItemRepository.findByIdAndCartUserId(itemId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Khong tim thay san pham trong gio hang"
+                        "Không tìm thấy sản phẩm trong giỏ hàng"
                 ));
 
         UUID branchId = item.getCart().getBranch().getId();
@@ -109,12 +109,12 @@ public class CartService {
         BranchInventory inventory = branchInventoryRepository
                 .findByBranchIdAndProductId(branchId, productId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "San pham khong con duoc ban tai chi nhanh nay"
+                        "Sản phẩm hiện không còn được bán tại chi nhánh này"
                 ));
 
         if (request.getQuantity() > inventory.getStockQuantity()) {
             throw new BadRequestException(
-                    "So luong vuot qua ton kho hien tai"
+                    "Số lượng yêu cầu vượt quá tồn kho hiện tại"
             );
         }
 
@@ -130,7 +130,7 @@ public class CartService {
     public void removeItem(UUID userId, UUID itemId) {
         CartItem item = cartItemRepository.findByIdAndCartUserId(itemId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Khong tim thay san pham trong gio hang"
+                        "Không tìm thấy sản phẩm trong giỏ hàng"
                 ));
 
         cartItemRepository.delete(item);
@@ -191,12 +191,12 @@ public class CartService {
     private Branch validateSellingBranch(UUID branchId) {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Khong tim thay chi nhanh"
+                        "Không tìm thấy chi nhánh"
                 ));
 
         if (branch.getStatus() != BranchStatus.ACTIVE || branch.isWarehouse()) {
             throw new BadRequestException(
-                    "Chi nhanh khong hoat dong ban hang"
+                    "Chi nhánh hiện không hoạt động bán hàng"
             );
         }
 

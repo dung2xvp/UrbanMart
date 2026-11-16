@@ -27,7 +27,9 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        ApiResponse<Void> body = ApiResponse.error("Ban chua dang nhap hoac token khong hop le");
+        ApiResponse<Void> body = ApiResponse.error(
+                "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại"
+        );
 
         response.getWriter().write(objectMapper.writeValueAsString(body));
     }

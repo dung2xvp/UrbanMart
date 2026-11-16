@@ -122,14 +122,14 @@ public class AddressService {
     private Address findAddressOfUser(UUID userId, UUID addressId) {
         return addressRepository.findByIdAndUserId(addressId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Khong tim thay dia chi"
+                        "Không tìm thấy địa chỉ"
                 ));
     }
 
     private User findUser(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Khong tim thay nguoi dung"
+                        "Không tìm thấy người dùng"
                 ));
     }
 }

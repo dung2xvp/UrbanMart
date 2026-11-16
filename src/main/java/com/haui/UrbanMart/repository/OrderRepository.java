@@ -38,6 +38,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     boolean existsByCustomer_IdAndStatus(UUID customerId, OrderStatus status);
 
+    boolean existsByBranch_IdAndStatusIn(UUID branchId, Set<OrderStatus> statuses);
+
     @EntityGraph(attributePaths = {"branch"})
     Optional<Order> findByIdAndBranch_Id(UUID orderId, UUID branchId);
 

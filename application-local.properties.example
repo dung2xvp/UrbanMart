@@ -7,3 +7,6 @@ spring.mail.password=your-gmail-app-password
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
 app.mail.from=your-email@gmail.com
+
+# Gemini API key (create one at https://aistudio.google.com/app/apikey)
+spring.ai.google.genai.api-key=YOUR_GEMINI_API_KEY

@@ -51,6 +51,7 @@ public class RecipeService {
     private final BranchRepository branchRepository;
     private final BranchInventoryRepository branchInventoryRepository;
     private final ProductPricingService productPricingService;
+    private final RecipeKnowledgeService recipeKnowledgeService;
 
     // ------------------------------------------------------------------ admin
 
@@ -78,7 +79,10 @@ public class RecipeService {
         Recipe recipe = new Recipe();
         applyFields(recipe, request, slug);
         addIngredients(recipe, request.ingredients(), products);
-        return toAdminResponse(recipeRepository.save(recipe), true);
+        Recipe saved = recipeRepository.save(recipe);
+        recipeRepository.flush();
+        recipeKnowledgeService.indexRecipe(findWithIngredients(saved.getId()));
+        return toAdminResponse(saved, true);
     }
 
     @Transactional
@@ -93,7 +97,10 @@ public class RecipeService {
         recipe.getIngredients().clear();
         recipeRepository.flush();
         addIngredients(recipe, request.ingredients(), products);
-        return toAdminResponse(recipeRepository.save(recipe), true);
+        Recipe saved = recipeRepository.save(recipe);
+        recipeRepository.flush();
+        recipeKnowledgeService.indexRecipe(findWithIngredients(saved.getId()));
+        return toAdminResponse(saved, true);
     }
 
     /** Xoa mem: an mon an khoi danh sach khach hang, giu du lieu de khoi phuc. */
@@ -102,6 +109,7 @@ public class RecipeService {
         Recipe recipe = recipeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn"));
         recipe.setActive(false);
+        recipeKnowledgeService.deleteEmbedding(id);
     }
 
     // --------------------------------------------------------------- customer

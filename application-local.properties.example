@@ -10,3 +10,8 @@ app.mail.from=your-email@gmail.com
 
 # Gemini API key (create one at https://aistudio.google.com/app/apikey)
 spring.ai.google.genai.api-key=YOUR_GEMINI_API_KEY
+spring.ai.google.genai.embedding.api-key=YOUR_GEMINI_API_KEY
+# Recipe RAG embedding configuration (shared Gemini API key above)
+spring.ai.google.genai.embedding.text.model=gemini-embedding-001
+spring.ai.google.genai.embedding.text.dimensions=768
+spring.ai.google.genai.embedding.text.auto-truncate=false

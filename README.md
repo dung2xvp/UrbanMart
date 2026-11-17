@@ -45,7 +45,7 @@ Các migration trong dự án được chạy thủ công bằng `psql`, không 
 **Trên macOS/Linux:**
 ```bash
 cd db/migrations
-for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql V8__product_sku_sequence.sql V9__orders_payments_and_promotions.sql V10__inventory_reservations_and_movements.sql V11__backfill_branch_inventory_products.sql V12__branch_inventory_expiry_lots.sql V13__order_handover_confirmation.sql V14__voucher_details_and_conditions.sql V15__notifications.sql V16__recipes.sql V17__reviews.sql V18__food_incompatibilities.sql V19__fixed_branch_delivery_radius.sql; do
+for f in V1__extensions_and_enums.sql V2__users_and_addresses.sql V3__branches_catalog_inventory.sql V4__wishlist_and_cart.sql V5__cart_uniqueness_constraints.sql V6__product_discounts.sql V7__daily_fresh_products.sql V8__product_sku_sequence.sql V9__orders_payments_and_promotions.sql V10__inventory_reservations_and_movements.sql V11__backfill_branch_inventory_products.sql V12__branch_inventory_expiry_lots.sql V13__order_handover_confirmation.sql V14__voucher_details_and_conditions.sql V15__notifications.sql V16__recipes.sql V17__reviews.sql V18__food_incompatibilities.sql V19__fixed_branch_delivery_radius.sql V20__recipe_embeddings.sql; do
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1 < "$f" || break
 done
 ```
@@ -53,7 +53,7 @@ done
 **Trên Windows (PowerShell)** — `<` không dùng được như Linux, phải dùng `Get-Content`:
 ```powershell
 cd db\migrations
-$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql","V8__product_sku_sequence.sql","V9__orders_payments_and_promotions.sql","V10__inventory_reservations_and_movements.sql","V11__backfill_branch_inventory_products.sql","V12__branch_inventory_expiry_lots.sql","V13__order_handover_confirmation.sql","V14__voucher_details_and_conditions.sql","V15__notifications.sql","V16__recipes.sql","V17__reviews.sql","V18__food_incompatibilities.sql","V19__fixed_branch_delivery_radius.sql"
+$files = "V1__extensions_and_enums.sql","V2__users_and_addresses.sql","V3__branches_catalog_inventory.sql","V4__wishlist_and_cart.sql","V5__cart_uniqueness_constraints.sql","V6__product_discounts.sql","V7__daily_fresh_products.sql","V8__product_sku_sequence.sql","V9__orders_payments_and_promotions.sql","V10__inventory_reservations_and_movements.sql","V11__backfill_branch_inventory_products.sql","V12__branch_inventory_expiry_lots.sql","V13__order_handover_confirmation.sql","V14__voucher_details_and_conditions.sql","V15__notifications.sql","V16__recipes.sql","V17__reviews.sql","V18__food_incompatibilities.sql","V19__fixed_branch_delivery_radius.sql","V20__recipe_embeddings.sql"
 foreach ($f in $files) {
     Get-Content -Raw $f | docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
     if ($LASTEXITCODE -ne 0) { break }
@@ -64,6 +64,13 @@ Nếu database đã chạy đến V18, chỉ áp dụng V19 để chuyển tất
 
 ```powershell
 Get-Content -Raw .\db\migrations\V19__fixed_branch_delivery_radius.sql |
+  docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
+```
+
+Nếu database đã chạy đến V19, áp dụng V20 để tạo kho embedding cho RAG công thức:
+
+```powershell
+Get-Content -Raw .\db\migrations\V20__recipe_embeddings.sql |
   docker exec -i urbanmart-db psql -U urbanmart_user -d urbanmart -v ON_ERROR_STOP=1 -1
 ```
 
@@ -96,7 +103,7 @@ Kiểm tra các bảng:
 docker exec -it urbanmart-db psql -U urbanmart_user -d urbanmart -c "\dt"
 ```
 
-Các bảng chính gồm: `users`, `addresses`, `branches`, `categories`, `brands`, `products`, `branch_inventory`, `inventory_movements`, `wishlists`, `carts`, `cart_items`, `product_discounts`, `orders`, `order_items`, `payments`, `promotions`, `order_promotions`, `promotion_user_usage`, `recipes`, `recipe_ingredients`, `order_reviews`, `product_reviews`, `food_tags`, `product_food_tags`, `food_incompatibilities`.
+Các bảng chính gồm: `users`, `addresses`, `branches`, `categories`, `brands`, `products`, `branch_inventory`, `inventory_movements`, `wishlists`, `carts`, `cart_items`, `product_discounts`, `orders`, `order_items`, `payments`, `promotions`, `order_promotions`, `promotion_user_usage`, `recipes`, `recipe_ingredients`, `recipe_embeddings`, `order_reviews`, `product_reviews`, `food_tags`, `product_food_tags`, `food_incompatibilities`.
 
 Migration `V5` thêm ràng buộc để mỗi user chỉ có một giỏ hàng trên mỗi chi nhánh và mỗi sản phẩm chỉ xuất hiện một lần trong cùng giỏ hàng. Nếu database đã có dữ liệu trùng, cần xử lý các bản ghi đó trước khi chạy migration.
 
@@ -598,7 +605,19 @@ Ví dụ tạo tài khoản nhân viên chi nhánh:
 }
 ```
 
-Các nhóm API còn lại (đặt hàng, thanh toán, AI, chat, dự báo tồn kho...) sẽ được bổ sung khi triển khai các giai đoạn tiếp theo.
+### AI gợi ý món ăn bằng RAG (MVP)
+
+MVP truy xuất tối đa 5 công thức đang hoạt động bằng cosine similarity trên pgvector, sau đó yêu cầu Gemini chọn tối đa 3 món và giải thích ngắn. Nội dung embedding gồm tên, danh mục, mô tả và nguyên liệu đã liên kết với sản phẩm. Response lấy công thức/nguyên liệu từ database; Gemini không tạo ID sản phẩm, giá, tồn kho, thời gian nấu hay hướng dẫn nấu.
+
+Trước khi chạy tính năng, áp dụng migration `V20__recipe_embeddings.sql` và cấu hình Gemini key như hướng dẫn ở `application-local.properties.example`. Model embedding mặc định là `gemini-embedding-001`, 768 chiều; nếu đổi model hoặc số chiều, cần cập nhật migration/cấu hình đồng bộ và lập chỉ mục lại.
+
+- `POST /api/v1/ai/recipes/suggestions` yêu cầu đăng nhập, body: `{"query":"Gợi ý món chay từ rau củ"}`. Độ dài yêu cầu tối đa 500 ký tự; mỗi tài khoản được gọi tối đa 5 lần/phút (Redis).
+- `POST /api/v1/admin/ai/recipes/reindex` chỉ dành cho ADMIN; dùng để lập chỉ mục lần đầu hoặc đồng bộ lại toàn bộ công thức đang hoạt động. API có thể mất thời gian và phát sinh chi phí embedding theo số công thức.
+- Tạo/cập nhật món qua API admin sẽ cập nhật embedding của món đó; ẩn món sẽ xóa embedding. Nếu thông tin sản phẩm liên kết với công thức thay đổi, hãy gọi endpoint reindex để làm mới nội dung tìm kiếm.
+- Nếu chưa có công thức đang hoạt động, API gợi ý trả danh sách rỗng. Nếu số công thức và số embedding không khớp, API báo lỗi đồng bộ thay vì trả kết quả thiếu dữ liệu.
+- API gợi ý không sinh hướng dẫn nấu, thời gian nấu, giá hoặc tồn kho vì schema Recipe hiện chưa lưu các trường này. Trường `activeProduct` chỉ phản ánh sản phẩm còn trạng thái kinh doanh; xem giá/tồn kho theo chi nhánh qua `GET /api/v1/recipes/{id}/ingredients?branchId=...`.
+
+Endpoint thử nghiệm cũ `/api/test-ai` chỉ dành cho ADMIN. Test tự động dùng mock; không gọi Gemini thật.
 
 ## Cấu trúc thư mục liên quan tới DB & hạ tầng
 

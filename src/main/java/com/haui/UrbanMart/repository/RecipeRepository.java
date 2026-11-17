@@ -15,6 +15,8 @@ import java.util.UUID;
 
 public interface RecipeRepository extends JpaRepository<Recipe, UUID> {
 
+    long countByActiveTrue();
+
     boolean existsBySlug(String slug);
 
     boolean existsBySlugAndIdNot(String slug, UUID id);
@@ -28,6 +30,16 @@ public interface RecipeRepository extends JpaRepository<Recipe, UUID> {
             WHERE recipe.id = :id
             """)
     Optional<Recipe> findWithIngredientsById(@Param("id") UUID id);
+
+    @Query("""
+            SELECT DISTINCT recipe
+            FROM Recipe recipe
+            LEFT JOIN FETCH recipe.ingredients ingredient
+            LEFT JOIN FETCH ingredient.product product
+            WHERE recipe.active = true
+            ORDER BY recipe.id
+            """)
+    List<Recipe> findAllActiveWithIngredients();
 
     @Query("""
             SELECT recipe

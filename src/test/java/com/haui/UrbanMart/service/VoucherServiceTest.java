@@ -131,6 +131,7 @@ class VoucherServiceTest {
                 anyString(),
                 eq(false),
                 any(OffsetDateTime.class),
+                any(),
                 any()
         )).thenReturn(new PageImpl<>(List.of(promotion)));
         when(usageRepository.findAllForCustomerAndPromotions(any(), anyList()))

@@ -15,6 +15,7 @@ import java.util.UUID;
 public class AiRateLimitService {
 
     private static final int MAX_RECIPE_SUGGESTIONS_PER_MINUTE = 5;
+    private static final int MAX_CHAT_MESSAGES_PER_MINUTE = 5;
     private static final Duration WINDOW = Duration.ofMinutes(1);
     private static final DefaultRedisScript<Long> INCREMENT_WITH_EXPIRY = new DefaultRedisScript<>("""
             local current = redis.call('INCR', KEYS[1])
@@ -27,7 +28,22 @@ public class AiRateLimitService {
     private final StringRedisTemplate redisTemplate;
 
     public void checkRecipeSuggestionLimit(UUID userId) {
-        String key = "ai:recipe-suggestions:%s".formatted(userId);
+        checkLimit(
+                "ai:recipe-suggestions:%s".formatted(userId),
+                MAX_RECIPE_SUGGESTIONS_PER_MINUTE,
+                "Bạn đã vượt quá 5 yêu cầu gợi ý món ăn trong một phút"
+        );
+    }
+
+    public void checkChatMessageLimit(UUID userId) {
+        checkLimit(
+                "ai:chat:%s".formatted(userId),
+                MAX_CHAT_MESSAGES_PER_MINUTE,
+                "Bạn đã vượt quá 5 tin nhắn chat AI trong một phút"
+        );
+    }
+
+    private void checkLimit(String key, int maxRequests, String limitMessage) {
         Long requestCount = redisTemplate.execute(
                 INCREMENT_WITH_EXPIRY,
                 List.of(key),
@@ -36,10 +52,8 @@ public class AiRateLimitService {
         if (requestCount == null) {
             throw new IllegalStateException("Redis không trả về kết quả giới hạn AI");
         }
-        if (requestCount > MAX_RECIPE_SUGGESTIONS_PER_MINUTE) {
-            throw new TooManyRequestsException(
-                    "Bạn đã vượt quá 5 yêu cầu gợi ý món ăn trong một phút"
-            );
+        if (requestCount > maxRequests) {
+            throw new TooManyRequestsException(limitMessage);
         }
     }
 }

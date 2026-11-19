@@ -50,6 +50,22 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(FeatureNotImplementedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNotImplemented(
+            FeatureNotImplementedException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(AiResponseException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAiResponseFailure(
+            AiResponseException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
     // Bat loi tu @Valid tren cac DTO request (vd: UserCreationRequest) -
     // gom loi cua tung field lai thanh 1 Map de frontend biet chinh xac
     // field nao sai, thay vi 1 cau thong bao chung chung.

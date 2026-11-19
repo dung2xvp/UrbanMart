@@ -61,6 +61,7 @@ public class VoucherService {
                         normalizeKeyword(keyword),
                         availableOnly,
                         OffsetDateTime.now(),
+                        branchId,
                         pageable
                 );
         if (customerId == null || branchId == null) {

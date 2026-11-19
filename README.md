@@ -619,6 +619,16 @@ Trước khi chạy tính năng, áp dụng migration `V20__recipe_embeddings.sq
 
 Endpoint thử nghiệm cũ `/api/test-ai` chỉ dành cho ADMIN. Test tự động dùng mock; không gọi Gemini thật.
 
+### AI tư vấn chat (MVP)
+
+- `POST /api/chat/send-message` yêu cầu tài khoản CUSTOMER và body gồm `mode` (`AI`), `sessionId` (tối đa 100 ký tự chữ/số, `_` hoặc `-`), `message` (tối đa 2000 ký tự), `branchId`, và `context` tùy chọn. Ví dụ: `{"mode":"AI","sessionId":"sess_123","message":"Gợi ý sản phẩm cho tôi","branchId":"<uuid>","context":{"categoryId":"<uuid>","currentCartTotal":250000},"attachments":[]}`.
+- Sản phẩm được giới hạn theo chi nhánh/danh mục, chỉ đưa ra khi tồn khả dụng (tồn kho trừ số đã giữ) lớn hơn 0; voucher được đọc từ dữ liệu đang hoạt động và kiểm tra điều kiện bằng giỏ hàng thật của tài khoản. `context.currentCartTotal` chỉ để tương thích request, không được tin cậy hay sử dụng.
+- Backend tìm sản phẩm theo từ khóa trực tiếp trong tên, SKU, mô tả, danh mục và thương hiệu; kết quả còn phải đang kinh doanh và còn tồn khả dụng tại chi nhánh. Các sản phẩm khớp trực tiếp được ưu tiên trong danh sách trả về, Gemini không thể loại bỏ chúng bằng cách trả mảng ID rỗng. Giá và tồn kho trong response lấy từ backend.
+- Gemini chỉ chọn ID từ danh sách backend cung cấp; API lọc ID ngoài danh sách/trùng lặp trước khi trả kết quả. Chưa có kho chính sách/FAQ được quản trị; prompt hướng dẫn AI không khẳng định dữ liệu vận chuyển, đổi trả, bảo quản, xuất xứ, sức khỏe hoặc đơn hàng khi thiếu nguồn, nhưng phản hồi văn bản do mô hình tạo vẫn cần được giám sát.
+- Gemini được giới hạn tối đa 1024 output token cho phản hồi chat. Nếu JSON phản hồi bị cắt/hỏng, backend trả các sản phẩm khớp từ khóa với dữ liệu catalog đã xác minh kèm thông báo fallback; nếu không có dữ liệu khớp an toàn thì trả HTTP 502 thay vì lỗi 500 không rõ nguyên nhân.
+- `sessionId` hiện chỉ được phản hồi lại, chưa lưu lịch sử hội thoại. Tệp đính kèm bị từ chối nếu danh sách không rỗng. `mode: "STAFF"` trả HTTP 501 cho tài khoản đã đăng nhập vì chưa có luồng chat nhân viên; không giả lập câu trả lời của nhân viên. `type` nhận `TEXT_ONLY`, `RECOMMEND_PRODUCTS` hoặc `RECOMMEND_VOUCHERS`.
+- Giới hạn chat AI là 5 yêu cầu/tài khoản/phút qua Redis, tách biệt với giới hạn gợi ý công thức.
+
 ## Cấu trúc thư mục liên quan tới DB & hạ tầng
 
 ```

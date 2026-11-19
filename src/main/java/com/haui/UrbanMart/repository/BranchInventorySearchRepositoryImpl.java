@@ -1,6 +1,8 @@
 package com.haui.UrbanMart.repository;
 
 import com.haui.UrbanMart.entity.BranchInventory;
+import com.haui.UrbanMart.entity.Brand;
+import com.haui.UrbanMart.entity.Category;
 import com.haui.UrbanMart.entity.Product;
 import com.haui.UrbanMart.entity.ProductDiscount;
 import com.haui.UrbanMart.entity.ProductStatus;
@@ -30,6 +32,17 @@ public class BranchInventorySearchRepositoryImpl
         implements BranchInventorySearchRepository {
 
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
+    private static final String VIETNAMESE_ACCENTED_CHARACTERS =
+            "àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩ"
+                    + "òóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ";
+    private static final String UNACCENTED_CHARACTERS =
+            "a".repeat(17)
+                    + "e".repeat(11)
+                    + "i".repeat(5)
+                    + "o".repeat(17)
+                    + "u".repeat(11)
+                    + "y".repeat(5)
+                    + "d";
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -107,9 +120,41 @@ public class BranchInventorySearchRepositoryImpl
 
         if (keyword != null && !keyword.isBlank()) {
             String pattern = "%" + keyword.trim().toLowerCase() + "%";
+            String accentInsensitivePattern =
+                    "%" + normalizeVietnamese(keyword.trim()) + "%";
+            Join<Product, Category> category = product.join("category", JoinType.LEFT);
+            Join<Product, Brand> brand = product.join("brand", JoinType.LEFT);
             predicates.add(cb.or(
                     cb.like(cb.lower(product.get("name")), pattern),
-                    cb.like(cb.lower(product.get("sku")), pattern)
+                    cb.like(cb.lower(product.get("sku")), pattern),
+                    cb.like(cb.lower(product.get("description")), pattern),
+                    cb.like(cb.lower(category.get("name")), pattern),
+                    cb.like(cb.lower(brand.get("name")), pattern),
+                    accentInsensitiveLike(
+                            cb,
+                            product.get("name"),
+                            accentInsensitivePattern
+                    ),
+                    accentInsensitiveLike(
+                            cb,
+                            product.get("sku"),
+                            accentInsensitivePattern
+                    ),
+                    accentInsensitiveLike(
+                            cb,
+                            product.get("description"),
+                            accentInsensitivePattern
+                    ),
+                    accentInsensitiveLike(
+                            cb,
+                            category.get("name"),
+                            accentInsensitivePattern
+                    ),
+                    accentInsensitiveLike(
+                            cb,
+                            brand.get("name"),
+                            accentInsensitivePattern
+                    )
             ));
         }
         if (categoryIds != null && !categoryIds.isEmpty()) {
@@ -119,9 +164,13 @@ public class BranchInventorySearchRepositoryImpl
             predicates.add(product.get("brand").get("id").in(brandIds));
         }
         if (inStock != null) {
+            Expression<Integer> availableQuantity = cb.diff(
+                    inventory.<Integer>get("stockQuantity"),
+                    inventory.<Integer>get("reservedQuantity")
+            );
             predicates.add(inStock
-                    ? cb.greaterThan(inventory.get("stockQuantity"), 0)
-                    : cb.equal(inventory.get("stockQuantity"), 0));
+                    ? cb.gt(availableQuantity, 0)
+                    : cb.le(availableQuantity, 0));
         }
         if (promotionsOnly) {
             predicates.add(cb.isNotNull(discount.get("id")));
@@ -138,6 +187,27 @@ public class BranchInventorySearchRepositoryImpl
             predicates.add(cb.lessThanOrEqualTo(price, maxPrice));
         }
         return predicates;
+    }
+
+    private Predicate accentInsensitiveLike(
+            CriteriaBuilder cb,
+            Expression<String> value,
+            String pattern
+    ) {
+        Expression<String> normalizedValue = cb.function(
+                "translate",
+                String.class,
+                cb.lower(value),
+                cb.literal(VIETNAMESE_ACCENTED_CHARACTERS),
+                cb.literal(UNACCENTED_CHARACTERS)
+        );
+        return cb.like(normalizedValue, pattern);
+    }
+
+    static String normalizeVietnamese(String value) {
+        return java.text.Normalizer.normalize(value.toLowerCase(), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .replace('đ', 'd');
     }
 
     private long countResults(

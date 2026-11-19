@@ -33,6 +33,11 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
             SELECT promotion
             FROM Promotion promotion
             WHERE promotion.active = true
+              AND (
+                  :branchId IS NULL
+                  OR promotion.branch IS NULL
+                  OR promotion.branch.id = :branchId
+              )
               AND (:availableOnly = false OR (
                   promotion.startsAt <= :now
                   AND promotion.endsAt > :now
@@ -52,6 +57,7 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
             @Param("keyword") String keyword,
             @Param("availableOnly") boolean availableOnly,
             @Param("now") OffsetDateTime now,
+            @Param("branchId") UUID branchId,
             Pageable pageable
     );
 

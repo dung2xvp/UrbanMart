@@ -147,7 +147,6 @@ public class CartService {
 
     private CartResponse buildCartResponse(Cart cart) {
         List<CartItemResponse> responseItems = new ArrayList<>();
-        int totalQuantity = 0;
         BigDecimal totalAmount = BigDecimal.ZERO;
 
         List<CartItem> cartItems = cartItemRepository.findAllByCartId(cart.getId());
@@ -175,7 +174,6 @@ public class CartService {
                     subtotal
             ));
 
-            totalQuantity += item.getQuantity();
             totalAmount = totalAmount.add(subtotal);
         }
 
@@ -183,7 +181,7 @@ public class CartService {
                 cart.getId(),
                 cart.getBranch().getId(),
                 responseItems,
-                totalQuantity,
+                responseItems.size(),
                 totalAmount
         );
     }
